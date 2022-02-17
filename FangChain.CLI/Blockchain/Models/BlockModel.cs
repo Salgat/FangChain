@@ -12,12 +12,13 @@ namespace FangChain.CLI
 {
     public class BlockModel
     {
-        public BlockModel(int index, string previousBlockHash, ImmutableArray<TransactionModel> transactions, ImmutableArray<SignatureModel> signatures)
+        public const string CreatorAlias = "creator";
+
+        public BlockModel(int index, string previousBlockHash, ImmutableArray<TransactionModel> transactions)
         {
             BlockIndex = index;
             PreviousBlockHash = previousBlockHash;
             Transactions = transactions;
-            Signatures = signatures;
         }
 
         /// <summary>
@@ -28,31 +29,28 @@ namespace FangChain.CLI
         public static BlockModel CreateInitialBlock(PublicAndPrivateKeys initialUserKeys)
         {
             using var secp256k1 = new Secp256k1();
+            var base58PublicKey = initialUserKeys.GetBase58PublicKey();
 
             // Initial block promotes creator of blockchain
-            var firstUserTransaction = new TransactionModel[]
+            var firstUserTransactions = new List<TransactionModel>
             {
-                new PromoteUserTransaction(Base58CheckEncoding.Encode(initialUserKeys.PublicKey), UserDesignation.SuperAdministrator)
-            }.ToImmutableArray();
-            var transactionHash = firstUserTransaction.Single().GetHash();
-            var transactionSignature = new byte[64];
-            secp256k1.Sign(transactionSignature, transactionHash, initialUserKeys.PrivateKey);
-            var transactionSignatureModel = new[]
-            {
-                new SignatureModel(Base58CheckEncoding.Encode(initialUserKeys.PublicKey), Base58CheckEncoding.Encode(transactionSignature))
-            }.ToImmutableArray();
-            firstUserTransaction.Single().SetSignatures(transactionSignatureModel);
+                new PromoteUserTransaction(base58PublicKey, UserDesignation.SuperAdministrator)
+            };
+            var promoteTransactionSignature = firstUserTransactions.Single().CreateSignature(initialUserKeys);
+            firstUserTransactions.Single().SetSignatures(new [] { promoteTransactionSignature });
 
-            // Get the block hash (excluding the block signature) and sign it by the blockchain creator
-            var initialBlockHash = GetHash(0, string.Empty, firstUserTransaction);
-            var signature = new byte[64];
-            secp256k1.Sign(signature, initialBlockHash, initialUserKeys.PrivateKey);
-            var initialBlockSignature = new[]
-            {
-                new SignatureModel(Base58CheckEncoding.Encode(initialUserKeys.PublicKey), Base58CheckEncoding.Encode(signature))
-            }.ToImmutableArray();
+            // Set block creator's alias to "creator"
+            var creatorAliasTransaction = new AddAliasTransaction(base58PublicKey, CreatorAlias);
+            var creatorAliasTransactionSignature = creatorAliasTransaction.CreateSignature(initialUserKeys);
+            creatorAliasTransaction.SetSignatures(new [] { creatorAliasTransactionSignature });
+            firstUserTransactions.Add(creatorAliasTransaction);
 
-            return new BlockModel(0, "", firstUserTransaction, initialBlockSignature);
+            // Sign initial block
+            var block = new BlockModel(0, "", firstUserTransactions.ToImmutableArray());
+            var blockSignature = block.CreateSignature(initialUserKeys);
+            block.SetSignatures(new[] { blockSignature });
+
+            return block;
         }
 
         /// <summary>
@@ -62,13 +60,13 @@ namespace FangChain.CLI
         /// <param name="previousBlockHash"></param>
         /// <param name="transactions"></param>
         /// <returns></returns>
-        public static byte[] GetHash(int index, string previousBlockHash, ImmutableArray<TransactionModel> transactions)
+        public byte[] GetHash()
         {
             // Return a SHA-256 hash of the block
             using var contentsToHash = new MemoryStream();
-            contentsToHash.Write(BitConverter.GetBytes(index));
-            contentsToHash.Write(Encoding.ASCII.GetBytes(previousBlockHash));
-            foreach (var transaction in transactions)
+            contentsToHash.Write(BitConverter.GetBytes(BlockIndex));
+            contentsToHash.Write(Encoding.ASCII.GetBytes(PreviousBlockHash));
+            foreach (var transaction in Transactions)
             {
                 contentsToHash.Write(transaction.GetBytes());
             }
@@ -76,6 +74,21 @@ namespace FangChain.CLI
             using var sha256 = SHA256.Create();
             var hash = sha256.ComputeHash(contentsToHash.ToArray());
             return hash;
+        }
+
+        public SignatureModel CreateSignature(PublicAndPrivateKeys keys)
+        {
+            using var secp256k1 = new Secp256k1();
+
+            var blockHash = GetHash();
+            var blockSignature = new byte[64];
+            secp256k1.Sign(blockSignature, blockHash, keys.PrivateKey);
+            return new SignatureModel(keys.GetBase58PublicKey(), Base58CheckEncoding.Encode(blockSignature));
+        }
+
+        public void SetSignatures(IEnumerable<SignatureModel> signatures)
+        {
+            Signatures = signatures.ToImmutableArray();
         }
 
         public int BlockIndex { get; }

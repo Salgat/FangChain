@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -8,23 +7,23 @@ using System.Threading.Tasks;
 
 namespace FangChain.CLI
 {
-    public class PromoteUserTransaction : TransactionModel
+    public class AddAliasTransaction : TransactionModel
     {
-        public override TransactionType TransactionType { get => TransactionType.PromoteUser; }
+        public override TransactionType TransactionType { get => TransactionType.AddAlias; }
         public string PublicKeyBase58 { get; }
-        public UserDesignation UserDesignation { get; }
+        public string Alias { get; }
 
-        public PromoteUserTransaction(string publicKeyBase58, UserDesignation designation)
+        public AddAliasTransaction(string publicKeyBase58, string alias)
         {
             PublicKeyBase58 = publicKeyBase58;
-            UserDesignation = designation;
+            Alias = alias;
         }
 
         protected override void PopulateBytesFromProperties(MemoryStream stream)
         {
             stream.Write(BitConverter.GetBytes((int)TransactionType));
             stream.Write(Encoding.ASCII.GetBytes(PublicKeyBase58));
-            stream.Write(BitConverter.GetBytes((int)UserDesignation));
+            stream.Write(Encoding.ASCII.GetBytes(Alias));
         }
     }
 }

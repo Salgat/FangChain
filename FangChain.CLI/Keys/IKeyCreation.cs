@@ -17,6 +17,9 @@ namespace FangChain.CLI
                 PublicKey = Base58CheckEncoding.Decode(base58Keys.PrivateKeyBase58),
                 PrivateKey = Base58CheckEncoding.Decode(base58Keys.PrivateKeyBase58),
             };
+
+        public string GetBase58PublicKey() => Base58CheckEncoding.Encode(PublicKey);
+        public string GetBase58PrivateKey() => Base58CheckEncoding.Encode(PrivateKey);
     }
 
     public struct Base58PublicAndPrivateKeys
