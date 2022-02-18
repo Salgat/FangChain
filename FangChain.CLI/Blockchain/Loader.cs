@@ -18,7 +18,7 @@ namespace FangChain.CLI
 
         public Loader() { }
 
-        public async Task<ImmutableArray<BlockModel>> LoadBlockchainAsync(string directory)
+        public async Task<ImmutableArray<BlockModel>> LoadBlockchainAsync(string directory, CancellationToken cancellationToken = default)
         {
             var files = Directory.GetFiles(directory).OrderBy(fileName => fileName);
             var blocks = new List<BlockModel>();
@@ -26,12 +26,40 @@ namespace FangChain.CLI
             {
                 if (!file.EndsWith(".block.json")) continue;
 
-                var blockJson = await File.ReadAllTextAsync(file);
-                var block = DeserializeBlock(JObject.Parse(blockJson));
+                var block = await LoadBlockAsync(file, cancellationToken);
                 blocks.Add(block);
             }
 
             return blocks.OrderBy(block => block.BlockIndex).ToImmutableArray();
+        }
+
+        public async Task<BlockModel> LoadBlockAsync(string blockPath, CancellationToken cancellationToken = default)
+        {
+            var blockJson = await File.ReadAllTextAsync(blockPath, cancellationToken);
+            return DeserializeBlock(JObject.Parse(blockJson));
+        }
+
+        public async Task<TransactionModel> LoadTransactionAsync(string transactionPath, CancellationToken cancellationToken = default)
+        {
+            var transactionJson = await File.ReadAllTextAsync(transactionPath, cancellationToken);
+            var transactionJObject = JObject.Parse(transactionJson);
+            return DeserializeTransaction(transactionJObject);
+        }
+
+        public async Task<Base58PublicAndPrivateKeys> LoadKeysAsync(string keysPath, CancellationToken cancellationToken = default)
+        {
+            var keysJson = await File.ReadAllTextAsync(keysPath, cancellationToken);
+            var keysJObject = JObject.Parse(keysJson);
+            return keysJObject.ToObject<Base58PublicAndPrivateKeys>();
+        }
+
+        private static TransactionModel DeserializeTransaction(JObject transactionJObject)
+        {
+            var transactionEnum = (TransactionType)transactionJObject[nameof(TransactionModel.TransactionType)].ToObject<int>();
+            var transactionTypeName = $"{transactionEnum}Transaction";
+            var transactionType = TransactionTypes[transactionTypeName];
+            var transaction = transactionJObject.ToObject(transactionType);
+            return (TransactionModel)transaction;
         }
 
         private static BlockModel DeserializeBlock(JObject blockJson)
@@ -43,11 +71,8 @@ namespace FangChain.CLI
             var transactions = new List<TransactionModel>();
             foreach (var transactionJObject in transactionsJArray)
             {
-                var transactionEnum = (TransactionType)transactionJObject[nameof(TransactionModel.TransactionType)].ToObject<int>();
-                var transactionTypeName = $"{transactionEnum}Transaction";
-                var transactionType = TransactionTypes[transactionTypeName];
-                var transaction = transactionJObject.ToObject(transactionType);
-                transactions.Add((TransactionModel)transaction);
+                var transaction = DeserializeTransaction((JObject)transactionJObject);
+                transactions.Add(transaction);
             }
 
             var signaturesJArray = blockJson[nameof(BlockModel.Signatures)];

@@ -1,5 +1,6 @@
 ﻿using FangChain.CLI;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json.Linq;
 using System.CommandLine;
 using System.IO;
 
@@ -14,21 +15,25 @@ var serviceProvider = services.BuildServiceProvider();
 var argument = new Argument<string>("command", "Command name.");
 var credentialsOption = new Option<string?>("--credentials-path", "The path of the credentials to create or read from. Defaults to current working directory.");
 var blockchainPathOption = new Option<string?>("--blockchain-path", "The path of the blockchain to create or read from. Defaults to the current working directory.");
+var transactionPathOption = new Option<string?>("--transaction-path", "The path of the transaction to read and write to.");
 var command = new RootCommand
 {
     argument, 
     credentialsOption,
-    blockchainPathOption
+    blockchainPathOption,
+    transactionPathOption
 };
 command.Description = "FangChain CLI";
 
-command.SetHandler(async (string argument, string? credentialsPath, string? blockchainPath, CancellationToken cancellationToken) => 
+command.SetHandler(async (string argument, string? credentialsPath, string? blockchainPath, string? transactionPath, CancellationToken cancellationToken) => 
 {
     try
     {
         argument = argument.ToLowerInvariant();
         var defaultDirectory = Directory.GetCurrentDirectory();
         blockchainPath ??= defaultDirectory;
+        var loader = serviceProvider.GetRequiredService<ILoader>();
+
         if (argument == "create-keys")
         {
             Console.WriteLine($"Creating public and private keys.");
@@ -49,14 +54,13 @@ command.SetHandler(async (string argument, string? credentialsPath, string? bloc
 
             var blockchainCreation = serviceProvider.GetRequiredService<IBlockchainCreation>();
             var blockchainDirectory = new DirectoryInfo(blockchainPath);
-            await blockchainCreation.CreateBlockChainAsync(blockchainDirectory, credentialsPath);
+            await blockchainCreation.CreateBlockChainAsync(blockchainDirectory, credentialsPath, cancellationToken);
             Console.WriteLine($"Blockchain created at location '{Path.GetFullPath(blockchainDirectory.FullName)}'.");
         }
         else if (argument == "validate-blockchain")
         {
             Console.WriteLine($"Validating blockchain at '{blockchainPath}'.");
-            var loader = serviceProvider.GetRequiredService<ILoader>();
-            var blockchain = await loader.LoadBlockchainAsync(blockchainPath);
+            var blockchain = await loader.LoadBlockchainAsync(blockchainPath, cancellationToken);
 
             var validator = serviceProvider.GetRequiredService<IValidator>();
             if (validator.IsBlockchainValid(blockchain))
@@ -68,11 +72,28 @@ command.SetHandler(async (string argument, string? credentialsPath, string? bloc
                 Console.WriteLine($"Blockchain is invalid.");
             }
         }
+        else if (argument == "sign-transaction")
+        {
+            if (transactionPath is null)
+            {
+                throw new ArgumentException($"Transaction path must be provided.");
+            }
+
+            Console.WriteLine($"Signing transaction at '{transactionPath}'.");
+
+            var transaction = await loader.LoadTransactionAsync(transactionPath, cancellationToken);
+            var keys = await loader.LoadKeysAsync(credentialsPath, cancellationToken);
+            var signature = transaction.CreateSignature(PublicAndPrivateKeys.FromBase58(keys));
+            transaction.AddSignature(signature);
+            await File.WriteAllTextAsync(transactionPath, JObject.FromObject(transaction).ToString(), cancellationToken);
+
+            Console.WriteLine($"Transactioned signed by user '{signature.PublicKeyBase58}'.");
+        }
     } 
     catch (Exception e)
     {
         Console.WriteLine($"Error Occurred: {e.Message}");
     }
-}, argument, credentialsOption, blockchainPathOption);
+}, argument, credentialsOption, blockchainPathOption, transactionPathOption);
 
 return await command.InvokeAsync(args);

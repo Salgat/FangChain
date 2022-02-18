@@ -13,11 +13,16 @@ namespace FangChain.CLI
     public abstract class TransactionModel
     {
         public abstract TransactionType TransactionType { get; }
-        public ImmutableArray<SignatureModel> Signatures { get; set; }
+        public ImmutableArray<SignatureModel> Signatures { get; set; } = ImmutableArray<SignatureModel>.Empty;
         
         public void SetSignatures(IEnumerable<SignatureModel> signatures)
         {
             Signatures = signatures.ToImmutableArray();
+        }
+
+        public void AddSignature(SignatureModel signature)
+        {
+            Signatures = Signatures.Concat(new[] { signature }).ToImmutableArray();
         }
 
         protected abstract void PopulateBytesFromProperties(MemoryStream stream);
