@@ -40,6 +40,6 @@ namespace FangChain.CLI
             return block;
         }
 
-        private static string GenerateBlockName(BlockModel block) => $"{block.BlockIndex}.json";
+        private static string GenerateBlockName(BlockModel block) => $"{block.BlockIndex}.block.json";
     }
 }

@@ -10,8 +10,8 @@ namespace FangChain.CLI
     public class AddAliasTransaction : TransactionModel
     {
         public override TransactionType TransactionType { get => TransactionType.AddAlias; }
-        public string PublicKeyBase58 { get; }
-        public string Alias { get; }
+        public string PublicKeyBase58 { get; init; }
+        public string Alias { get; init; }
 
         public AddAliasTransaction(string publicKeyBase58, string alias)
         {

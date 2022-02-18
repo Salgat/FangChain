@@ -14,11 +14,16 @@ namespace FangChain.CLI
     {
         public const string CreatorAlias = "creator";
 
-        public BlockModel(int index, string previousBlockHash, ImmutableArray<TransactionModel> transactions)
+        public long BlockIndex { get; }
+        public string PreviousBlockHashBase58 { get; }
+        public ImmutableArray<TransactionModel> Transactions { get; }
+        public ImmutableArray<SignatureModel> Signatures { get; private set; }
+
+        public BlockModel(long index, string previousBlockHashBase58, IEnumerable<TransactionModel> transactions)
         {
             BlockIndex = index;
-            PreviousBlockHash = previousBlockHash;
-            Transactions = transactions;
+            PreviousBlockHashBase58 = previousBlockHashBase58;
+            Transactions = transactions.ToImmutableArray();
         }
 
         /// <summary>
@@ -46,7 +51,7 @@ namespace FangChain.CLI
             firstUserTransactions.Add(creatorAliasTransaction);
 
             // Sign initial block
-            var block = new BlockModel(0, "", firstUserTransactions.ToImmutableArray());
+            var block = new BlockModel(0, "", firstUserTransactions);
             var blockSignature = block.CreateSignature(initialUserKeys);
             block.SetSignatures(new[] { blockSignature });
 
@@ -65,7 +70,7 @@ namespace FangChain.CLI
             // Return a SHA-256 hash of the block
             using var contentsToHash = new MemoryStream();
             contentsToHash.Write(BitConverter.GetBytes(BlockIndex));
-            contentsToHash.Write(Encoding.ASCII.GetBytes(PreviousBlockHash));
+            contentsToHash.Write(Encoding.ASCII.GetBytes(PreviousBlockHashBase58));
             foreach (var transaction in Transactions)
             {
                 contentsToHash.Write(transaction.GetBytes());
@@ -90,10 +95,5 @@ namespace FangChain.CLI
         {
             Signatures = signatures.ToImmutableArray();
         }
-
-        public int BlockIndex { get; }
-        public string PreviousBlockHash { get; }
-        public ImmutableArray<TransactionModel> Transactions { get; }
-        public ImmutableArray<SignatureModel> Signatures { get; private set; }
     }
 }

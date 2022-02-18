@@ -7,6 +7,8 @@ using System.IO;
 var services = new ServiceCollection();
 services.AddTransient<IKeyCreation, KeyCreation>();
 services.AddTransient<IBlockchainCreation, BlockchainCreation>();
+services.AddTransient<IValidator, Validator>();
+services.AddTransient<ILoader, Loader>();
 var serviceProvider = services.BuildServiceProvider();
 
 var argument = new Argument<string>("command", "Command name.");
@@ -26,6 +28,7 @@ command.SetHandler(async (string argument, string? credentialsPath, string? bloc
     {
         argument = argument.ToLowerInvariant();
         var defaultDirectory = Directory.GetCurrentDirectory();
+        blockchainPath ??= defaultDirectory;
         if (argument == "create-keys")
         {
             Console.WriteLine($"Creating public and private keys.");
@@ -45,9 +48,25 @@ command.SetHandler(async (string argument, string? credentialsPath, string? bloc
             }
 
             var blockchainCreation = serviceProvider.GetRequiredService<IBlockchainCreation>();
-            var blockchainDirectory = new DirectoryInfo(blockchainPath ?? defaultDirectory);
+            var blockchainDirectory = new DirectoryInfo(blockchainPath);
             await blockchainCreation.CreateBlockChainAsync(blockchainDirectory, credentialsPath);
             Console.WriteLine($"Blockchain created at location '{Path.GetFullPath(blockchainDirectory.FullName)}'.");
+        }
+        else if (argument == "validate-blockchain")
+        {
+            Console.WriteLine($"Validating blockchain at '{blockchainPath}'.");
+            var loader = serviceProvider.GetRequiredService<ILoader>();
+            var blockchain = await loader.LoadBlockchainAsync(blockchainPath);
+
+            var validator = serviceProvider.GetRequiredService<IValidator>();
+            if (validator.IsBlockchainValid(blockchain))
+            {
+                Console.WriteLine($"Blockchain is valid.");
+            } 
+            else
+            {
+                Console.WriteLine($"Blockchain is invalid.");
+            }
         }
     } 
     catch (Exception e)

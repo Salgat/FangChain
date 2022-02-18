@@ -11,8 +11,8 @@ namespace FangChain.CLI
     public class PromoteUserTransaction : TransactionModel
     {
         public override TransactionType TransactionType { get => TransactionType.PromoteUser; }
-        public string PublicKeyBase58 { get; }
-        public UserDesignation UserDesignation { get; }
+        public string PublicKeyBase58 { get; init; }
+        public UserDesignation UserDesignation { get; init; }
 
         public PromoteUserTransaction(string publicKeyBase58, UserDesignation designation)
         {
