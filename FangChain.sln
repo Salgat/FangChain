@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.32126.317
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FangChain.CLI", "FangChain.CLI\FangChain.CLI.csproj", "{2A8606D0-684C-4549-AB85-D6C08F52E7EA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FangChain.CLI", "FangChain.CLI\FangChain.CLI.csproj", "{2A8606D0-684C-4549-AB85-D6C08F52E7EA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FangChain.Core", "FangChain.Core\FangChain.Core.csproj", "{3034788D-DE80-4F89-BF70-4F398A79D808}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{2A8606D0-684C-4549-AB85-D6C08F52E7EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2A8606D0-684C-4549-AB85-D6C08F52E7EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2A8606D0-684C-4549-AB85-D6C08F52E7EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3034788D-DE80-4F89-BF70-4F398A79D808}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3034788D-DE80-4F89-BF70-4F398A79D808}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3034788D-DE80-4F89-BF70-4F398A79D808}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3034788D-DE80-4F89-BF70-4F398A79D808}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

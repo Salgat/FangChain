@@ -9,11 +9,11 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-    <PackageReference Include="NokitaKaze.Base58Check" Version="0.4.2" />
-    <PackageReference Include="Secp256k1.Native" Version="0.1.23" />
-    <PackageReference Include="Secp256k1.Net" Version="0.1.55" />
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta3.22111.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FangChain.Core\FangChain.Core.csproj" />
   </ItemGroup>
 
 </Project>

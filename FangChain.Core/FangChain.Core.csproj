@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+	<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+	<PackageReference Include="NokitaKaze.Base58Check" Version="0.4.2" />
+	<PackageReference Include="Secp256k1.Native" Version="0.1.23" />
+	<PackageReference Include="Secp256k1.Net" Version="0.1.55" />
+  </ItemGroup>
+
+</Project>
