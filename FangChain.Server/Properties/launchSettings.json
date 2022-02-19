@@ -1,0 +1,29 @@
+{
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:64090",
+      "sslPort": 0
+    }
+  },
+  "profiles": {
+    "FangChain.Server": {
+      "commandName": "Project",
+      "commandLineArgs": "host --credentials-path C:\\Users\\salga\\Documents\\projects\\FangChain-Test\\keys-20220216T030145.json",
+      "workingDirectory": "C:\\Users\\salga\\Documents\\projects\\FangChain-Test",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "http://localhost:5293",
+      "dotnetRunMessages": true
+    },
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

@@ -8,7 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace FangChain.CLI
+namespace FangChain
 {
     public class BlockchainCreation : IBlockchainCreation
     {

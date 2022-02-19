@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FangChain.CLI
+namespace FangChain
 {
     public struct PublicAndPrivateKeys
     {

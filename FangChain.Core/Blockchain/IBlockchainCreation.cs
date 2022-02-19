@@ -1,5 +1,5 @@
 ﻿
-namespace FangChain.CLI
+namespace FangChain
 {
     public interface IBlockchainCreation
     {

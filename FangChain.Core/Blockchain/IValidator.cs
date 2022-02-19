@@ -1,6 +1,6 @@
 ﻿using System.Collections.Immutable;
 
-namespace FangChain.CLI
+namespace FangChain
 {
     public interface IValidator
     {

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FangChain.CLI
+namespace FangChain
 {
     public record struct SignatureModel(string PublicKeyBase58, string SignatureBase58)
     {

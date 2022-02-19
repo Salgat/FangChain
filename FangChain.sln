@@ -5,7 +5,9 @@ VisualStudioVersion = 17.0.32126.317
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FangChain.CLI", "FangChain.CLI\FangChain.CLI.csproj", "{2A8606D0-684C-4549-AB85-D6C08F52E7EA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FangChain.Core", "FangChain.Core\FangChain.Core.csproj", "{3034788D-DE80-4F89-BF70-4F398A79D808}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FangChain.Core", "FangChain.Core\FangChain.Core.csproj", "{3034788D-DE80-4F89-BF70-4F398A79D808}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FangChain.Server", "FangChain.Server\FangChain.Server.csproj", "{6E9644C2-A134-47D0-95F6-58616C397540}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{3034788D-DE80-4F89-BF70-4F398A79D808}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3034788D-DE80-4F89-BF70-4F398A79D808}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3034788D-DE80-4F89-BF70-4F398A79D808}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E9644C2-A134-47D0-95F6-58616C397540}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E9644C2-A134-47D0-95F6-58616C397540}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E9644C2-A134-47D0-95F6-58616C397540}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E9644C2-A134-47D0-95F6-58616C397540}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

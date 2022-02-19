@@ -5,7 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FangChain.CLI
+namespace FangChain
 {
     public class AddAliasTransaction : TransactionModel
     {

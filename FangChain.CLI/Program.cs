@@ -1,4 +1,4 @@
-﻿using FangChain.CLI;
+﻿using FangChain;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using System.CommandLine;
@@ -6,10 +6,7 @@ using System.IO;
 
 
 var services = new ServiceCollection();
-services.AddTransient<IKeyCreation, KeyCreation>();
-services.AddTransient<IBlockchainCreation, BlockchainCreation>();
-services.AddTransient<IValidator, Validator>();
-services.AddTransient<ILoader, Loader>();
+services.AddFangChainDependencies();
 var serviceProvider = services.BuildServiceProvider();
 
 var defaultDirectory = Directory.GetCurrentDirectory();

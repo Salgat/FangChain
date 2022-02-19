@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FangChain.CLI
+namespace FangChain
 {
     /// <summary>
     /// The user's designated level. How high or low the value is has no relation to the privilege of the user's level beyond its designation.
