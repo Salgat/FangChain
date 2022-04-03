@@ -15,5 +15,9 @@
   <ItemGroup>
     <ProjectReference Include="..\FangChain.Core\FangChain.Core.csproj" />
   </ItemGroup>
+	
+  <ItemGroup>
+  	<InternalsVisibleTo Include="FangChain.Test" />
+  </ItemGroup>
 
 </Project>

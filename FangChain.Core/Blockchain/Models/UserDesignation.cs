@@ -13,6 +13,7 @@ namespace FangChain
     {
         Anonymous = 0,
         Verified = 1, // Is acknowledged by the blockchain as a specific verified user, with a known identity
-        SuperAdministrator = 2 // The highest privilege available, able to create blocks, promote users, etc
+        SuperAdministrator = 2, // The highest privilege available, able to create blocks, promote users, etc
+        Blocked = 3 // All transactions signed by the blocked user are blocked from being added to the blockchain.
     }
 }

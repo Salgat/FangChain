@@ -11,11 +11,14 @@ namespace FangChain
 {
     public class Validator : IValidator
     {
-        public bool IsBlockchainValid(ImmutableArray<BlockModel> blocks)
+        public bool IsBlockAdditionValid(IEnumerable<BlockModel> blockchain, BlockModel proposedBlock) 
+            => IsBlockchainValid(blockchain.Concat(new[] { proposedBlock }));
+
+        public bool IsBlockchainValid(IEnumerable<BlockModel> blockchain)
         {
             var expectedPreviousHashBase58 = string.Empty;
             long previousBlockIndex = -1;
-            foreach (var block in blocks)
+            foreach (var block in blockchain)
             {
                 if (expectedPreviousHashBase58 != block.PreviousBlockHashBase58) return false;
                 if (!IsBlockValid(block)) return false;

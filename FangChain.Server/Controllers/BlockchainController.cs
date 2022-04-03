@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace FangChain.Server
+namespace FangChain
 {
     [ApiController]
     [Route("blockchain")]
@@ -15,7 +15,7 @@ namespace FangChain.Server
             _blockchainState = blockchainState;
         }
 
-        [HttpGet]
+        [HttpGet, Route("blocks")]
         public IEnumerable<BlockModel> GetBlocks(int fromIndex, int toIndex)
         {
             if (toIndex - fromIndex + 1 > MaxPageSize)

@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "FangChain.CLI": {
+      "commandName": "Project",
+      "workingDirectory": "C:\\Users\\salga\\Documents\\projects\\FangChain-Test",
+      "remoteDebugEnabled": false
+    }
+  }
+}

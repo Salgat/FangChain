@@ -4,7 +4,8 @@ namespace FangChain
 {
     public interface IValidator
     {
-        bool IsBlockchainValid(ImmutableArray<BlockModel> blocks);
+        bool IsBlockAdditionValid(IEnumerable<BlockModel> blockchain, BlockModel proposedBlock);
+        bool IsBlockchainValid(IEnumerable<BlockModel> blockchain);
         bool IsBlockValid(BlockModel block);
         bool IsTransactionValid(TransactionModel transaction);
     }

@@ -11,7 +11,7 @@ namespace FangChain.Server
     {
         public static void AddFangChainServerDependencies(this IServiceCollection serviceCollection)
         {
-            serviceCollection.AddSingleton<IBlockchainState, BlockchainState>();
+            serviceCollection.AddSingleton<IBlockchainState, BlockchainStateInMemory>();
         }
     }
 }

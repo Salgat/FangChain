@@ -81,6 +81,12 @@ namespace FangChain
             return hash;
         }
 
+        public string GetHashString()
+        {
+            var hash = GetHash();
+            return Convert.ToHexString(hash);
+        }
+
         public SignatureModel CreateSignature(PublicAndPrivateKeys keys)
         {
             using var secp256k1 = new Secp256k1();

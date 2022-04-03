@@ -1,8 +1,19 @@
 using FangChain;
 using FangChain.Server;
 using System.CommandLine;
+using System.Linq;
 
 #region http server setup
+var commandOverride = args.FirstOrDefault(argument => argument.StartsWith("--commandOverride="));
+if (commandOverride != null)
+{
+    args = commandOverride
+        .Split("=")[1]
+        .Split(" ")
+        .Where(argument => !string.IsNullOrWhiteSpace(argument))
+        .Select(argument => argument.Trim())
+        .ToArray();
+}
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddFangChainDependencies();
 builder.Services.AddFangChainServerDependencies(); 
@@ -13,6 +24,7 @@ builder.Services
     {
         options.EnableEndpointRouting = false;
     })
+    .AddApplicationPart(typeof(Program).Assembly)
     .AddNewtonsoftJson()
     .AddControllersAsServices();
 
@@ -53,6 +65,56 @@ hostCommand.SetHandler(async (string? blockchainPath, string credentialsPath, Ca
     var blockchainState = serviceProvider.GetRequiredService<IBlockchainState>();
     blockchainState.SetBlockchain(blockchain);
 
+    #region background jobs
+    // On a configured interval, process proposed jobs in a background thread
+    // NOTE: This is the exclusive mutator of blockchain state, no other function does this.
+    var pendingOperations = serviceProvider.GetRequiredService<IPendingTransactions>();
+    var blockchainRules = serviceProvider.GetRequiredService<IBlockchainRules>();
+    var _ = Task.Run(async () =>
+    {
+        while (true)
+        {
+            await Task.Delay(2500);
+            try
+            {
+                var currentBlockchain = blockchainState.GetBlockchain();
+                if (!currentBlockchain.Any()) continue;
+
+                var nextBlockIndex = currentBlockchain.Last().BlockIndex + 1;
+                var previousBlockHash = currentBlockchain.Last().GetHashString();
+
+                var allowedTransactions = new List<TransactionModel>();
+                BlockModel? proposedBlock = default;
+                pendingOperations.PurgeExpiredTransactions(DateTimeOffset.UtcNow, nextBlockIndex);
+                foreach (var proposedTransaction in pendingOperations.PendingTransactions)
+                {
+                    proposedBlock = new BlockModel(nextBlockIndex, previousBlockHash, allowedTransactions.Concat(new[] { proposedTransaction.Transaction }));
+                    if (blockchainRules.IsBlockAdditionValid(currentBlockchain, proposedBlock))
+                    {
+                        allowedTransactions.Add(proposedTransaction.Transaction);
+                    }
+                }
+
+                // Add proposed transactions as a new block
+                if (proposedBlock == default) continue;
+                var proposedBlockchain = currentBlockchain.Add(proposedBlock);
+                blockchainState.SetBlockchain(proposedBlockchain);
+
+                // Flush pending transactions (as they are either included in the block or rejected)
+                foreach (var proposedTransaction in pendingOperations.PendingTransactions)
+                {
+                    pendingOperations.TryRemove(proposedTransaction);
+                }
+            }
+            catch (Exception ex)
+            {
+                // TODO: Use a proper logger
+                Console.WriteLine($"ERROR - Failed to process pending transactions");
+            }
+        }
+    });
+    #endregion
+
     await application.RunAsync(cancellationToken);
 }, blockchainPathOption, credentialsRequiredOption);
 
@@ -64,3 +126,7 @@ rootCommand.Description = "FangChain Server";
 #endregion
 
 return await rootCommand.InvokeAsync(args);
+
+public partial class Program 
+{
+}

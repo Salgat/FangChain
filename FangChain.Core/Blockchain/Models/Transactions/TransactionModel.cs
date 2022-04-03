@@ -57,6 +57,12 @@ namespace FangChain
             return hash;
         }
 
+        public string GetHashString()
+        {
+            var hash = GetHash();
+            return Convert.ToHexString(hash);
+        }
+
         /// <summary>
         /// Returns the signature for the transaction.
         /// </summary>
@@ -70,6 +76,11 @@ namespace FangChain
             var transactionSignature = new byte[64];
             secp256k1.Sign(transactionSignature, transactionHash, keys.PrivateKey);
             return new SignatureModel(keys.GetBase58PublicKey(), Base58CheckEncoding.Encode(transactionSignature));
+        }
+
+        public virtual bool IsValid(bool validateSignatures)
+        {
+            throw new NotImplementedException();
         }
     }
 }
