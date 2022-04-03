@@ -14,7 +14,7 @@ namespace FangChain
 
         public static PublicAndPrivateKeys FromBase58(Base58PublicAndPrivateKeys base58Keys) => new()
             {
-                PublicKey = Base58CheckEncoding.Decode(base58Keys.PrivateKeyBase58),
+                PublicKey = Base58CheckEncoding.Decode(base58Keys.PublicKeyBase58),
                 PrivateKey = Base58CheckEncoding.Decode(base58Keys.PrivateKeyBase58),
             };
 

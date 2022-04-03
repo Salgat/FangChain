@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FangChain.CLI\FangChain.CLI.csproj" />
     <ProjectReference Include="..\FangChain.Server\FangChain.Server.csproj" />
   </ItemGroup>
 
