@@ -74,7 +74,7 @@ hostCommand.SetHandler(async (string? blockchainPath, string credentialsPath, Ca
     {
         while (true)
         {
-            await Task.Delay(2500);
+            await Task.Delay(1000);
             try
             {
                 var currentBlockchain = blockchainState.GetBlockchain();
@@ -112,7 +112,7 @@ hostCommand.SetHandler(async (string? blockchainPath, string credentialsPath, Ca
                 Console.WriteLine($"ERROR - Failed to process pending transactions");
             }
         }
-    });
+    }, cancellationToken);
     #endregion
 
     await application.RunAsync(cancellationToken);

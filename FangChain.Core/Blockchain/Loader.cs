@@ -53,7 +53,7 @@ namespace FangChain
             return keysJObject.ToObject<Base58PublicAndPrivateKeys>();
         }
 
-        private static TransactionModel DeserializeTransaction(JObject transactionJObject)
+        public static TransactionModel DeserializeTransaction(JObject transactionJObject)
         {
             var transactionEnum = (TransactionType)transactionJObject[nameof(TransactionModel.TransactionType)].ToObject<int>();
             var transactionTypeName = $"{transactionEnum}Transaction";

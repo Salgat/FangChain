@@ -17,7 +17,7 @@ namespace FangChain.Server.Controllers
         }
 
         [HttpPost]
-        public void ProposeTransaction(PendingTransaction transaction)
+        public void ProposeTransaction([FromBody] PendingTransaction transaction)
         {
             if (transaction == null) throw new Exception($"Transaction must be defined in post body.");
 
@@ -27,7 +27,7 @@ namespace FangChain.Server.Controllers
 
         [HttpGet]
         [Route("confirmed")]
-        public bool IsTransactionConfirmed(string transactionHash)
+        public bool IsTransactionConfirmed([FromQuery] string transactionHash)
             => _blockchainState.IsTransactionConfirmed(transactionHash);
     }
 }

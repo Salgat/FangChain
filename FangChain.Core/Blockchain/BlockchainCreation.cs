@@ -12,14 +12,19 @@ namespace FangChain
 {
     public class BlockchainCreation : IBlockchainCreation
     {
+        private readonly ILoader _loader;
+
+        public BlockchainCreation(ILoader loader)
+        {
+            _loader = loader;
+        }
+
         public async Task CreateBlockChainAsync(DirectoryInfo blockchainDirectory, string credentialsPath, CancellationToken cancellationToken = default)
         {
-            var keysJson = await File.ReadAllTextAsync(credentialsPath, cancellationToken);
-            var keysBase58 = System.Text.Json.JsonSerializer.Deserialize<Base58PublicAndPrivateKeys>(keysJson);
+            var keysBase58 = await _loader.LoadKeysAsync(credentialsPath, cancellationToken);
             var keys = PublicAndPrivateKeys.FromBase58(keysBase58);
-
             var initialBlock = BlockModel.CreateInitialBlock(keys);
-            await PersistBlockAsync(blockchainDirectory, initialBlock);
+            await PersistBlockAsync(blockchainDirectory, initialBlock, cancellationToken);
         }
 
         public async Task PersistBlockAsync(DirectoryInfo blockchainDirectory, BlockModel block, CancellationToken cancellationToken = default)

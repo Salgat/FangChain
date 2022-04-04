@@ -7,6 +7,8 @@ using System;
 using System.Configuration;
 using System.IO;
 using System.Linq;
+using System.Net.Http.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -64,26 +66,33 @@ namespace FangChain.Test
 
         private async Task CreateAndInitializeBlockchain()
         {
-            // First create credentials
-            var args = new[] 
+            await CreateKeys(_credentialsPath);
+            await CreateBlockchain(_credentialsPath, _testDirectory);
+        }
+
+        private static async Task CreateKeys(string credentialsPath)
+        {
+            var args = new[]
             {
                 "create-keys",
                 "--credentials-path",
-                _credentialsPath,
+                credentialsPath,
             };
             var result = await CLI.Program.Main(args);
             Assert.Equal(0, result);
+        }
 
-            // Then create blockchain
-            args = new[] 
+        private static async Task CreateBlockchain(string credentialsPath, string blockchainDirectory)
+        {
+            var args = new[]
             {
                 "create-blockchain",
                 "--credentials-path",
-                _credentialsPath,
+                credentialsPath,
                 "--blockchain-path",
-                _testDirectory
+                blockchainDirectory
             };
-            result = await CLI.Program.Main(args);
+            var result = await CLI.Program.Main(args);
             Assert.Equal(0, result);
         }
 
@@ -91,7 +100,6 @@ namespace FangChain.Test
         public async Task CreateInitialBlockChain()
         {
             await CreateAndInitializeBlockchain();
-
             var client = _factory.CreateClient();
             var creatorKeys = await _factory.Services.GetRequiredService<ILoader>().LoadKeysAsync(_credentialsPath);
 
@@ -119,6 +127,49 @@ namespace FangChain.Test
             var addAliasTransaction = transactions.SingleOrDefault(t => (TransactionType)t.Value<int>("transactionType") == TransactionType.AddAlias);
             Assert.NotNull(addAliasTransaction);
             Assert.Equal(BlockModel.CreatorAlias, addAliasTransaction.Value<string>("alias"));
+        }
+
+        [Fact]
+        public async Task ProposeTransaction_PromoteUser_Verified()
+        {
+            await CreateAndInitializeBlockchain();
+            var client = _factory.CreateClient();
+            var secondUserCredentialsPath = Path.Combine(_testDirectory, $"testCredentials-{Guid.NewGuid():N}.json");
+            await CreateKeys(secondUserCredentialsPath);
+
+            var creatorKeys = await _factory.Services.GetRequiredService<ILoader>().LoadKeysAsync(_credentialsPath);
+            var secondUserKeys = await _factory.Services.GetRequiredService<ILoader>().LoadKeysAsync(secondUserCredentialsPath);
+
+            // Promote second User to verified
+            var promoteUserTransaction = new PromoteUserTransaction(creatorKeys.PublicKeyBase58, UserDesignation.Verified);
+            var proposedTransaction = new PendingTransaction()
+            {
+                DateTimeRecieved = DateTime.UtcNow,
+                ExpireAfter = DateTimeOffset.MaxValue,
+                MaxBlockIndexToAddTo = long.MaxValue,
+                TransactionJson = JObject.FromObject(promoteUserTransaction).ToString()
+            };
+            var response = await client.PostAsJsonAsync($"/transaction", proposedTransaction);
+            Assert.True(response.IsSuccessStatusCode);
+            await WaitUntil(async () => 
+            {
+                return await client.GetFromJsonAsync<bool>($"/transaction/confirmed?transactionHash={promoteUserTransaction.GetHashString()}");
+            });
+        }
+
+        private static async Task WaitUntil(Func<Task<bool>> condition, TimeSpan? maxWaitTime = default)
+        {
+            var waitTime = maxWaitTime ?? TimeSpan.FromSeconds(5);
+            var start = DateTimeOffset.UtcNow;
+            while (DateTimeOffset.UtcNow - start < waitTime)
+            {
+                await Task.Delay(500);
+                try
+                {
+                    if (await condition()) return;
+                } catch (Exception) { /* swallow */ }
+            }
+            throw new TimeoutException($"Condition exceeded max wait time.");
         }
     }
 }
