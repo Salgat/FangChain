@@ -1,3 +1,4 @@
+using FangChain.Server;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -8,6 +9,7 @@ using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Net.Http.Json;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -182,8 +184,34 @@ namespace FangChain.Test
             var secondUserCredentialsPath = Path.Combine(_testDirectory, $"testCredentials-{Guid.NewGuid():N}.json");
             await CreateKeys(secondUserCredentialsPath);
 
-            // TODO
+            var creatorKeys = await _factory.Services.GetRequiredService<ILoader>().LoadKeysAsync(_credentialsPath);
+            var secondUserKeys = await _factory.Services.GetRequiredService<ILoader>().LoadKeysAsync(secondUserCredentialsPath);
 
+            // Add balance to newly created user
+            BigInteger amountToAdd = 123456789;
+            var addBalanceToUserTransaction = new AddToUserBalanceTransaction(secondUserKeys.PublicKeyBase58, amountToAdd);
+            addBalanceToUserTransaction.AddSignature(PublicAndPrivateKeys.FromBase58(creatorKeys));
+            var proposedTransaction = new PendingTransaction()
+            {
+                DateTimeRecieved = DateTime.UtcNow,
+                ExpireAfter = DateTimeOffset.MaxValue,
+                MaxBlockIndexToAddTo = long.MaxValue,
+                TransactionJson = JObject.FromObject(addBalanceToUserTransaction).ToString()
+                // TODO: Add signatures to PendingTransaction that must match the Transaction.
+                // Even if transaction is signed, there's nothing stopping
+                // a discarded transaction from being proposed by a malicious actor
+            };
+            var response = await client.PostAsJsonAsync($"/transaction", proposedTransaction);
+            Assert.True(response.IsSuccessStatusCode);
+            await WaitUntil(async () =>
+            {
+                return await client.GetFromJsonAsync<bool>($"/transaction/confirmed?transactionHash={addBalanceToUserTransaction.GetHashString()}");
+            });
+
+            var amountQueried = await client.GetStringAsync($"/user/balance?userId={secondUserKeys.PublicKeyBase58}");
+            var amountQueriedParsed = JObject.Parse(amountQueried).ToObject<UserBalanceResponse>();
+            Assert.Equal(secondUserKeys.PublicKeyBase58, amountQueriedParsed.PublicKeyBase58);
+            Assert.Equal(amountToAdd, amountQueriedParsed.UserBalance);
         }
 
         private static async Task WaitUntil(Func<Task<bool>> condition, TimeSpan? maxWaitTime = default)

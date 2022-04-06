@@ -20,7 +20,7 @@ namespace FangChain.Server
         /// <returns></returns>
         [HttpGet]
         [Route("balance")]
-        public async Task<IActionResult> GetUserBalance(string userId)
+        public async Task<UserBalanceResponse> GetUserBalance(string userId)
         {
             if (_blockchainState.UserAliasToPublicKeyBase58.TryGetValue(userId, out var publicKeyBase58))
             {
@@ -28,17 +28,17 @@ namespace FangChain.Server
             }
             if (_blockchainState.UserSummaries.TryGetValue(userId, out var userSummary))
             {
-                return new JsonResult(new
+                return new UserBalanceResponse
                 {
                     PublicKeyBase58 = userId,
                     UserBalance = userSummary.Balance
-                });
+                };
             }
-            return new JsonResult(new
+            return new UserBalanceResponse
             {
                 PublicKeyBase58 = userId,
                 UserBalance = 0
-            });
+            };
         }
     }
 }
