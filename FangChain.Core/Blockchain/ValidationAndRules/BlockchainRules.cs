@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -17,6 +18,7 @@ namespace FangChain
 
         public bool IsBlockAdditionValid(BlockModel proposedBlock)
         {
+            var updatedUserBalances = new Dictionary<string, BigInteger>(); // Used to track if users will reach below minimum required balance
             foreach (var transaction in proposedBlock.Transactions)
             {
                 foreach (var signature in transaction.Signatures)
@@ -35,6 +37,32 @@ namespace FangChain
                     // Ensure quorum
                     var hasQuorum = HasQuorum(transaction, UserDesignation.SuperAdministrator);
                     if (!hasQuorum) return false;
+                }
+                else if (transaction.TransactionType is TransactionType.TransferToUserBalance)
+                {
+                    var transferToUserBalanceTransaction = (TransferToUserBalanceTransaction)transaction;
+
+                    // Ensure sending user signed transaction
+                    if (!transaction.Signatures.Any(s => s.PublicKeyBase58 == transferToUserBalanceTransaction.FromPublicKeyBase58))
+                    {
+                        return false;
+                    }
+
+                    // Ensure user has sufficient balance to send
+                    if (!updatedUserBalances.TryGetValue(transferToUserBalanceTransaction.FromPublicKeyBase58, out var userBalance))
+                    {
+                        if (_blockchainState.UserSummaries.TryGetValue(transferToUserBalanceTransaction.FromPublicKeyBase58, out var userSummary))
+                        {
+                            userBalance = userSummary.Balance;
+                        }
+                        else
+                        {
+                            userBalance = 0;
+                        }
+                    }
+                    var updatedUserbalance = userBalance - transferToUserBalanceTransaction.Amount;
+                    if (updatedUserbalance < 0) return false;
+                    updatedUserBalances[transferToUserBalanceTransaction.FromPublicKeyBase58] = updatedUserbalance;
                 }
                 else if (transaction.TransactionType is TransactionType.DisableUser)
                 {
