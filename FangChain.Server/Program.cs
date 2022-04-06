@@ -25,7 +25,7 @@ builder.Services
         options.EnableEndpointRouting = false;
     })
     .AddApplicationPart(typeof(Program).Assembly)
-    .AddNewtonsoftJson()
+    .AddNewtonsoftJson(config => config.UseMemberCasing())
     .AddControllersAsServices();
 
 var application = builder.Build();
@@ -53,6 +53,7 @@ hostCommand.SetHandler(async (string? blockchainPath, string credentialsPath, Ca
     // Load and validate blockchain
     blockchainPath ??= defaultDirectory;
     var loader = serviceProvider.GetRequiredService<ILoader>();
+    var hostCredentials = await loader.LoadKeysAsync(credentialsPath);
     var blockchain = await loader.LoadBlockchainAsync(blockchainPath, cancellationToken);
 
     var validator = serviceProvider.GetRequiredService<IValidator>();
@@ -94,6 +95,9 @@ hostCommand.SetHandler(async (string? blockchainPath, string credentialsPath, Ca
                         allowedTransactions.Add(proposedTransaction.Transaction);
                     }
                 }
+                if (!allowedTransactions.Any()) continue;
+                proposedBlock = new BlockModel(nextBlockIndex, previousBlockHash, allowedTransactions);
+                proposedBlock.AddSignature(PublicAndPrivateKeys.FromBase58(hostCredentials));
 
                 // Add proposed transactions as a new block
                 if (proposedBlock == default) continue;

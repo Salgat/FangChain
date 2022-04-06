@@ -9,6 +9,7 @@ namespace FangChain
     public enum TransactionType
     {
         AddAlias = 0,
-        PromoteUser = 1
+        PromoteUser = 1,
+        AddToUserBalance = 2,
     }
 }

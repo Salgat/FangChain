@@ -1,4 +1,5 @@
-﻿using NokitaKaze.Base58Check;
+﻿using Newtonsoft.Json.Linq;
+using NokitaKaze.Base58Check;
 using Secp256k1Net;
 using System;
 using System.Collections.Generic;
@@ -16,14 +17,27 @@ namespace FangChain
 
         public long BlockIndex { get; }
         public string PreviousBlockHashBase58 { get; }
-        public ImmutableArray<TransactionModel> Transactions { get; }
-        public ImmutableArray<SignatureModel> Signatures { get; private set; }
+        public ImmutableArray<TransactionModel> Transactions { get; } = ImmutableArray<TransactionModel>.Empty;
+        public ImmutableArray<SignatureModel> Signatures { get; private set; } = ImmutableArray<SignatureModel>.Empty;
 
         public BlockModel(long index, string previousBlockHashBase58, IEnumerable<TransactionModel> transactions)
         {
             BlockIndex = index;
             PreviousBlockHashBase58 = previousBlockHashBase58;
             Transactions = transactions.ToImmutableArray();
+        }
+
+        public BlockModel(JObject blockJson)
+        {
+            BlockIndex = blockJson.Value<int>(nameof(BlockIndex));
+            PreviousBlockHashBase58 = blockJson.Value<string>(nameof(PreviousBlockHashBase58));
+
+            var transactions = blockJson[nameof(Transactions)] as JArray;
+            Transactions = transactions.Select(t => Loader.DeserializeTransaction((JObject)t)).ToImmutableArray();
+
+
+            var signatures = blockJson[nameof(Signatures)] as JArray;
+            Signatures = signatures.Select(s => s.ToObject<SignatureModel>()).ToImmutableArray();
         }
 
         /// <summary>
@@ -85,6 +99,12 @@ namespace FangChain
         {
             var hash = GetHash();
             return Convert.ToHexString(hash);
+        }
+        
+        public void AddSignature(PublicAndPrivateKeys keys)
+        {
+            var signature = CreateSignature(keys);
+            Signatures = Signatures.Concat(new[] { signature }).ToImmutableArray();
         }
 
         public SignatureModel CreateSignature(PublicAndPrivateKeys keys)

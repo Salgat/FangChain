@@ -25,6 +25,12 @@ namespace FangChain
             Signatures = Signatures.Concat(new[] { signature }).ToImmutableArray();
         }
 
+        public void AddSignature(PublicAndPrivateKeys keys)
+        {
+            var signature = CreateSignature(keys);
+            AddSignature(signature);
+        }
+
         protected abstract void PopulateBytesFromProperties(MemoryStream stream);
 
         /// <summary>

@@ -108,25 +108,25 @@ namespace FangChain.Test
             Assert.Equal(1, responseJson.Count);
 
             var firstBlock = responseJson.Single();
-            var blockIndex = firstBlock.Value<int>("blockIndex");
-            var previousBlockHashBase58 = firstBlock.Value<string>("previousBlockHashBase58");
-            var transactions = firstBlock["transactions"] as JArray;
-            var signatures = firstBlock["signatures"] as JArray;
+            var blockIndex = firstBlock.Value<int>(nameof(BlockModel.BlockIndex));
+            var previousBlockHashBase58 = firstBlock.Value<string>(nameof(BlockModel.PreviousBlockHashBase58));
+            var transactions = firstBlock[nameof(BlockModel.Transactions)] as JArray;
+            var signatures = firstBlock[nameof(BlockModel.Signatures)] as JArray;
             Assert.Equal(0, blockIndex);
             Assert.Equal(string.Empty, previousBlockHashBase58);
             Assert.NotNull(transactions);
             Assert.Equal(2, transactions.Count);
             Assert.NotNull(signatures);
             Assert.Equal(1, signatures.Count);
-            Assert.Equal(creatorKeys.PublicKeyBase58, signatures[0].Value<string>("publicKeyBase58"));
+            Assert.Equal(creatorKeys.PublicKeyBase58, signatures[0].Value<string>(nameof(Base58PublicAndPrivateKeys.PublicKeyBase58)));
 
-            var promoteUserTransaction = transactions.SingleOrDefault(t => (TransactionType)t.Value<int>("transactionType") == TransactionType.PromoteUser);
+            var promoteUserTransaction = transactions.SingleOrDefault(t => (TransactionType)t.Value<int>(nameof(TransactionType)) == TransactionType.PromoteUser);
             Assert.NotNull(promoteUserTransaction);
-            Assert.Equal(UserDesignation.SuperAdministrator, (UserDesignation)promoteUserTransaction.Value<int>("userDesignation"));
+            Assert.Equal(UserDesignation.SuperAdministrator, (UserDesignation)promoteUserTransaction.Value<int>(nameof(UserDesignation)));
 
-            var addAliasTransaction = transactions.SingleOrDefault(t => (TransactionType)t.Value<int>("transactionType") == TransactionType.AddAlias);
+            var addAliasTransaction = transactions.SingleOrDefault(t => (TransactionType)t.Value<int>(nameof(TransactionType)) == TransactionType.AddAlias);
             Assert.NotNull(addAliasTransaction);
-            Assert.Equal(BlockModel.CreatorAlias, addAliasTransaction.Value<string>("alias"));
+            Assert.Equal(BlockModel.CreatorAlias, addAliasTransaction.Value<string>(nameof(AddAliasTransaction.Alias)));
         }
 
         [Fact]
@@ -142,12 +142,16 @@ namespace FangChain.Test
 
             // Promote second User to verified
             var promoteUserTransaction = new PromoteUserTransaction(creatorKeys.PublicKeyBase58, UserDesignation.Verified);
+            promoteUserTransaction.AddSignature(PublicAndPrivateKeys.FromBase58(creatorKeys));
             var proposedTransaction = new PendingTransaction()
             {
                 DateTimeRecieved = DateTime.UtcNow,
                 ExpireAfter = DateTimeOffset.MaxValue,
                 MaxBlockIndexToAddTo = long.MaxValue,
                 TransactionJson = JObject.FromObject(promoteUserTransaction).ToString()
+                // TODO: Add signatures to PendingTransaction that must match the Transaction.
+                // Even if transaction is signed, there's nothing stopping
+                // a discarded transaction from being proposed by a malicious actor
             };
             var response = await client.PostAsJsonAsync($"/transaction", proposedTransaction);
             Assert.True(response.IsSuccessStatusCode);
@@ -155,6 +159,31 @@ namespace FangChain.Test
             {
                 return await client.GetFromJsonAsync<bool>($"/transaction/confirmed?transactionHash={promoteUserTransaction.GetHashString()}");
             });
+
+            // Check that transaction has been added in next block
+            response = await client.GetAsync($"/blockchain/blocks?fromIndex=0&toIndex=50");
+            var responseJson = JArray.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal(2, responseJson.Count);
+
+            var secondBlock = (JObject)responseJson[1];
+            var blockModel = new BlockModel(secondBlock);
+            var blockIndex = secondBlock.Value<int>(nameof(BlockModel.BlockIndex));
+            var previousBlockHashBase58 = secondBlock.Value<string>(nameof(BlockModel.PreviousBlockHashBase58));
+            var transactions = secondBlock[nameof(BlockModel.Transactions)] as JArray;
+            var signatures = secondBlock[nameof(BlockModel.Signatures)] as JArray;
+            Assert.Equal(1, blockIndex);
+        }
+
+        [Fact]
+        public async Task AddUserBalanceTransaction_Verified()
+        {
+            await CreateAndInitializeBlockchain();
+            var client = _factory.CreateClient();
+            var secondUserCredentialsPath = Path.Combine(_testDirectory, $"testCredentials-{Guid.NewGuid():N}.json");
+            await CreateKeys(secondUserCredentialsPath);
+
+            // TODO
+
         }
 
         private static async Task WaitUntil(Func<Task<bool>> condition, TimeSpan? maxWaitTime = default)

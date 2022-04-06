@@ -25,10 +25,7 @@ namespace FangChain
                 _blockchain = new List<BlockModel>(blockchain);
                 foreach (var block in blockchain)
                 {
-                    foreach (var transaction in block.Transactions)
-                    {
-                        _confirmedTransactions[transaction.GetHashString()] = transaction;
-                    }
+                    UpdateState(block.Transactions);
                 }
             }
         }
@@ -47,17 +44,53 @@ namespace FangChain
             {
                 if (!_validator.IsBlockAdditionValid(_blockchain, block)) return false;
                 _blockchain.Add(block);
-                foreach (var transaction in block.Transactions)
-                {
-                    _confirmedTransactions[transaction.GetHashString()] = transaction;
-
-                    // TODO: Update user summaries
-                }
+                UpdateState(block.Transactions);
             }
 
             return true;
         }
 
         public bool IsTransactionConfirmed(string hash) => _confirmedTransactions.ContainsKey(hash);
+
+        private void UpdateState(ImmutableArray<TransactionModel> transactions)
+        {
+            void UpdateUserSummary(string publicKeyBase58, Action<UserSummary> update)
+            {
+                UserSummaries.AddOrUpdate(publicKeyBase58, publicKey => 
+                {
+                    var userSummary = new UserSummary();
+                    update(userSummary);
+                    return userSummary;
+                }, (publicKey, userSummary) =>
+                {
+                    update(userSummary);
+                    return userSummary;
+                });
+            }
+
+            foreach (var transaction in transactions)
+            {
+                _confirmedTransactions[transaction.GetHashString()] = transaction;
+                if (transaction.TransactionType is TransactionType.AddAlias)
+                {
+                    var addAliasTransaction = (AddAliasTransaction)transaction;
+                    UpdateUserSummary(addAliasTransaction.PublicKeyBase58, 
+                        userSummary => userSummary.Alias = addAliasTransaction.Alias);
+                    UserAliasToPublicKeyBase58[addAliasTransaction.Alias] = addAliasTransaction.PublicKeyBase58;
+                }
+                else if (transaction.TransactionType is TransactionType.PromoteUser)
+                {
+                    var promoteUserTransaction = (PromoteUserTransaction)transaction;
+                    UpdateUserSummary(promoteUserTransaction.PublicKeyBase58, 
+                        userSummary => userSummary.Designation = promoteUserTransaction.UserDesignation);
+                }
+                else if (transaction.TransactionType is TransactionType.AddToUserBalance)
+                {
+                    var addToUserBalanceTransaction = (AddToUserBalanceTransaction)transaction;
+                    UpdateUserSummary(addToUserBalanceTransaction.PublicKeyBase58,
+                        userSummary => userSummary.Balance += addToUserBalanceTransaction.Amount);
+                }
+            }
+        }
     }
 }

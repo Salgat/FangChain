@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics.CodeAnalysis;
 
-namespace FangChain.Server.Controllers
+namespace FangChain.Server
 {
     [ApiController]
     [Route("transaction")]
@@ -25,6 +25,11 @@ namespace FangChain.Server.Controllers
             if (!_pendingTransactions.TryAdd(transaction)) throw new Exception($"Failed to accept proposed transaction.");
         }
 
+        /// <summary>
+        /// Queries whether transaction has been processed (and either accepted or rejected).
+        /// </summary>
+        /// <param name="transactionHash"></param>
+        /// <returns>Returns whether transaction has been processed. Does not indicate whether it was accepted into the blockchain.</returns>
         [HttpGet]
         [Route("confirmed")]
         public bool IsTransactionConfirmed([FromQuery] string transactionHash)

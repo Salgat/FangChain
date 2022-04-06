@@ -1,30 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
-using System.Security.Cryptography;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace FangChain
 {
-    public class PromoteUserTransaction : TransactionModel
+    public class AddToUserBalanceTransaction : TransactionModel
     {
-        public override TransactionType TransactionType => TransactionType.PromoteUser;
+        public override TransactionType TransactionType => TransactionType.AddToUserBalance;
         public string PublicKeyBase58 { get; init; }
-        public UserDesignation UserDesignation { get; init; }
+        public BigInteger Amount { get; init; }
 
-        public PromoteUserTransaction(string publicKeyBase58, UserDesignation designation)
+        public AddToUserBalanceTransaction(string publicKeyBase58, BigInteger amount)
         {
             PublicKeyBase58 = publicKeyBase58;
-            UserDesignation = designation;
+            Amount = amount;
         }
 
         protected override void PopulateBytesFromProperties(MemoryStream stream)
         {
             stream.Write(BitConverter.GetBytes((int)TransactionType));
             stream.Write(Encoding.ASCII.GetBytes(PublicKeyBase58));
-            stream.Write(BitConverter.GetBytes((int)UserDesignation));
+            stream.Write(Amount.ToByteArray());
         }
     }
 }
