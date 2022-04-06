@@ -19,6 +19,8 @@ namespace FangChain
         public bool IsBlockAdditionValid(BlockModel proposedBlock)
         {
             var updatedUserBalances = new Dictionary<string, BigInteger>(); // Used to track if users will reach below minimum required balance
+            var updatedTokenOwners = new Dictionary<string, string>(); // TokenId => Owner's PublicKeyBase58
+            var removedTokens = new HashSet<string>(); // TokenId
             foreach (var transaction in proposedBlock.Transactions)
             {
                 foreach (var signature in transaction.Signatures)
@@ -31,12 +33,19 @@ namespace FangChain
                     }
                 }
 
-                if (transaction.TransactionType is TransactionType.PromoteUser ||
-                    transaction.TransactionType is TransactionType.AddToUserBalance)
+                if (transaction.TransactionType is TransactionType.PromoteUser)
                 {
                     // Ensure quorum
-                    var hasQuorum = HasQuorum(transaction, UserDesignation.SuperAdministrator);
-                    if (!hasQuorum) return false;
+                    if (!HasQuorum(transaction, UserDesignation.SuperAdministrator)) return false;
+                }
+                else if (transaction.TransactionType is TransactionType.AddToUserBalance)
+                {
+                    var addToUserBalanceTransaction = (AddToUserBalanceTransaction)transaction;
+                    var userBalance = GetUserBalance(addToUserBalanceTransaction.PublicKeyBase58, updatedUserBalances);
+                    updatedUserBalances[addToUserBalanceTransaction.PublicKeyBase58] = userBalance + addToUserBalanceTransaction.Amount;
+
+                    // Ensure quorum
+                    if (!HasQuorum(transaction, UserDesignation.SuperAdministrator)) return false;
                 }
                 else if (transaction.TransactionType is TransactionType.TransferToUserBalance)
                 {
@@ -49,20 +58,13 @@ namespace FangChain
                     }
 
                     // Ensure user has sufficient balance to send
-                    if (!updatedUserBalances.TryGetValue(transferToUserBalanceTransaction.FromPublicKeyBase58, out var userBalance))
-                    {
-                        if (_blockchainState.UserSummaries.TryGetValue(transferToUserBalanceTransaction.FromPublicKeyBase58, out var userSummary))
-                        {
-                            userBalance = userSummary.Balance;
-                        }
-                        else
-                        {
-                            userBalance = 0;
-                        }
-                    }
-                    var updatedUserbalance = userBalance - transferToUserBalanceTransaction.Amount;
+                    var fromUserBalance = GetUserBalance(transferToUserBalanceTransaction.FromPublicKeyBase58, updatedUserBalances);
+                    var updatedUserbalance = fromUserBalance - transferToUserBalanceTransaction.Amount;
                     if (updatedUserbalance < 0) return false;
                     updatedUserBalances[transferToUserBalanceTransaction.FromPublicKeyBase58] = updatedUserbalance;
+
+                    var toUserBalance = GetUserBalance(transferToUserBalanceTransaction.ToPublicKeyBase58, updatedUserBalances);
+                    updatedUserBalances[transferToUserBalanceTransaction.ToPublicKeyBase58] = toUserBalance + transferToUserBalanceTransaction.Amount;
                 }
                 else if (transaction.TransactionType is TransactionType.DisableUser)
                 {
@@ -73,6 +75,9 @@ namespace FangChain
                         // Avoid redundant disable
                         return false;
                     }
+
+                    // Ensure quorum
+                    if (!HasQuorum(transaction, UserDesignation.SuperAdministrator)) return false;
                 }
                 else if (transaction.TransactionType is TransactionType.EnableUser)
                 {
@@ -83,9 +88,86 @@ namespace FangChain
                         // Avoid redundant enable
                         return false;
                     }
+
+                    // Ensure quorum
+                    if (!HasQuorum(transaction, UserDesignation.SuperAdministrator)) return false;
+                }
+                else if (transaction.TransactionType is TransactionType.AddToken)
+                {
+                    var addTokenTransaction = (AddTokenTransaction)transaction;
+
+                    // Prevent duplicate tokens
+                    if (_blockchainState.TokenOwners.ContainsKey(addTokenTransaction.TokenId) || 
+                        !updatedTokenOwners.TryAdd(addTokenTransaction.TokenId, addTokenTransaction.PublicKeyBase58)) return false;
+                    removedTokens.Remove(addTokenTransaction.TokenId);
+
+                    // Ensure quorum
+                    if (!HasQuorum(transaction, UserDesignation.SuperAdministrator)) return false;
+                }
+                else if (transaction.TransactionType is TransactionType.RemoveToken)
+                {
+                    var removeTokenTransaction = (RemoveTokenTransaction)transaction;
+                    if (removedTokens.Contains(removeTokenTransaction.TokenId))
+                    {
+                        // Token was already removed and not added back
+                        return false;
+                    }
+
+                    if (!updatedTokenOwners.TryGetValue(removeTokenTransaction.TokenId, out var tokenOwner))
+                    {
+                        if (!_blockchainState.TokenOwners.TryGetValue(removeTokenTransaction.TokenId, out tokenOwner))
+                        {
+                            // No one owns this token
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        updatedTokenOwners.Remove(removeTokenTransaction.TokenId);
+                    }
+                    removedTokens.Add(removeTokenTransaction.TokenId);
+                }
+                else if (transaction.TransactionType is TransactionType.TransferToken)
+                {
+                    var transferTokenTransaction = (TransferTokenTransaction)transaction;
+                    if (removedTokens.Contains(transferTokenTransaction.TokenId))
+                    {
+                        // Token was already removed and not added back
+                        return false;
+                    }
+
+                    if (!updatedTokenOwners.TryGetValue(transferTokenTransaction.TokenId, out var tokenOwner))
+                    {
+                        if (!_blockchainState.TokenOwners.TryGetValue(transferTokenTransaction.TokenId, out tokenOwner))
+                        {
+                            // No one owns this token
+                            return false;
+                        }
+                    }
+
+                    // Only token owner can transfer token
+                    if (tokenOwner != transferTokenTransaction.FromPublicKeyBase58) return false;
+
+                    updatedTokenOwners[transferTokenTransaction.TokenId] = transferTokenTransaction.ToPublicKeyBase58;
                 }
             }
             return true;
+        }
+
+        private BigInteger GetUserBalance(string publicKeyBase58, Dictionary<string, BigInteger> updatedUserBalances)
+        {
+            if (!updatedUserBalances.TryGetValue(publicKeyBase58, out var userBalance))
+            {
+                if (_blockchainState.UserSummaries.TryGetValue(publicKeyBase58, out var userSummary))
+                {
+                    userBalance = userSummary.Balance;
+                }
+                else
+                {
+                    userBalance = 0;
+                }
+            }
+            return userBalance;
         }
 
         private bool HasQuorum(TransactionModel transaction, params UserDesignation[] designations)

@@ -32,6 +32,7 @@ namespace FangChain
 
         public ConcurrentDictionary<string, string> UserAliasToPublicKeyBase58 { get; } = new();
         public ConcurrentDictionary<string, UserSummary> UserSummaries { get; set; } = new(); // Key = PublicKeyBase58
+        public ConcurrentDictionary<string, string> TokenOwners { get; set; } = new(); // TokenId => PublicKeyBase58
 
         /// <summary>
         /// Tries adding the block to the blockchain. If validation fails, the blockchain remains unchanged and returns false.
@@ -101,6 +102,42 @@ namespace FangChain
                     var disableUserTransaction = (DisableUserTransaction)transaction;
                     UpdateUserSummary(disableUserTransaction.PublicKeyBase58,
                         userSummary => userSummary.Disabled = true);
+                }
+                else if (transaction.TransactionType is TransactionType.AddToken)
+                {
+                    var addTokenTransaction = (AddTokenTransaction)transaction;
+                    UpdateUserSummary(addTokenTransaction.PublicKeyBase58,
+                        userSummary => userSummary.Tokens = userSummary
+                            .Tokens
+                            .Add(addTokenTransaction.TokenId, addTokenTransaction.Contents));
+                    TokenOwners[addTokenTransaction.TokenId] = addTokenTransaction.PublicKeyBase58;
+                }
+                else if (transaction.TransactionType is TransactionType.RemoveToken)
+                {
+                    var removeTokenTransaction = (RemoveTokenTransaction)transaction;
+                    UpdateUserSummary(removeTokenTransaction.PublicKeyBase58,
+                        userSummary => userSummary.Tokens = userSummary
+                            .Tokens
+                            .Remove(removeTokenTransaction.TokenId));
+                    TokenOwners.TryRemove(removeTokenTransaction.TokenId, out var _);
+                }
+                else if (transaction.TransactionType is TransactionType.TransferToken)
+                {
+                    var transferTokenTransaction = (TransferTokenTransaction)transaction;
+                    var tokenContents = default(string);
+                    UpdateUserSummary(transferTokenTransaction.FromPublicKeyBase58,
+                        userSummary =>
+                        {
+                            tokenContents = userSummary.Tokens[transferTokenTransaction.TokenId];
+                            userSummary.Tokens = userSummary
+                                .Tokens
+                                .Remove(transferTokenTransaction.TokenId);
+                        });
+                    UpdateUserSummary(transferTokenTransaction.ToPublicKeyBase58,
+                        userSummary => userSummary.Tokens = userSummary
+                            .Tokens
+                            .Add(transferTokenTransaction.TokenId, tokenContents));
+                    TokenOwners[transferTokenTransaction.TokenId] = transferTokenTransaction.ToPublicKeyBase58;
                 }
             }
         }
