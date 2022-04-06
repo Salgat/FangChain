@@ -12,5 +12,6 @@ namespace FangChain
         public string Alias { get; set; } = "";
         public UserDesignation Designation { get; set; } = UserDesignation.Anonymous;
         public BigInteger Balance { get; set; } = BigInteger.Zero;
+        public bool Disabled { get; set; } = false;
     }
 }

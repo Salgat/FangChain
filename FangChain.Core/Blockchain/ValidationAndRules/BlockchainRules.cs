@@ -15,16 +15,46 @@ namespace FangChain
             _blockchainState = blockchainState;
         }
 
-        public bool IsBlockAdditionValid(IEnumerable<BlockModel> blockchain, BlockModel proposedBlock)
+        public bool IsBlockAdditionValid(BlockModel proposedBlock)
         {
             foreach (var transaction in proposedBlock.Transactions)
             {
+                foreach (var signature in transaction.Signatures)
+                {
+                    if (_blockchainState.UserSummaries.TryGetValue(signature.PublicKeyBase58, out var userSummary) &&
+                        userSummary.Disabled)
+                    {
+                        // A disabled user cannot sign transactions
+                        return false;
+                    }
+                }
+
                 if (transaction.TransactionType is TransactionType.PromoteUser ||
                     transaction.TransactionType is TransactionType.AddToUserBalance)
                 {
                     // Ensure quorum
                     var hasQuorum = HasQuorum(transaction, UserDesignation.SuperAdministrator);
                     if (!hasQuorum) return false;
+                }
+                else if (transaction.TransactionType is TransactionType.DisableUser)
+                {
+                    var disableUserTransaction = (DisableUserTransaction)transaction;
+                    if (_blockchainState.UserSummaries.TryGetValue(disableUserTransaction.PublicKeyBase58, out var userSummary) &&
+                        userSummary.Disabled == true)
+                    {
+                        // Avoid redundant disable
+                        return false;
+                    }
+                }
+                else if (transaction.TransactionType is TransactionType.EnableUser)
+                {
+                    var enableUserTransaction = (EnableUserTransaction)transaction;
+                    if (_blockchainState.UserSummaries.TryGetValue(enableUserTransaction.PublicKeyBase58, out var userSummary) &&
+                        userSummary.Disabled == false)
+                    {
+                        // Avoid redundant enable
+                        return false;
+                    }
                 }
             }
             return true;

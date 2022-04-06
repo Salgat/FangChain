@@ -23,6 +23,6 @@ namespace FangChain
     /// </summary>
     public interface IBlockchainRules
     {
-        bool IsBlockAdditionValid(IEnumerable<BlockModel> blockchain, BlockModel proposedBlock);
+        bool IsBlockAdditionValid(BlockModel proposedBlock);
     }
 }

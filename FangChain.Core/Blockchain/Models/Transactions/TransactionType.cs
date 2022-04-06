@@ -11,5 +11,7 @@ namespace FangChain
         AddAlias = 0,
         PromoteUser = 1,
         AddToUserBalance = 2,
+        DisableUser = 3,
+        EnableUser = 4,
     }
 }

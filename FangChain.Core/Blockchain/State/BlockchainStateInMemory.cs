@@ -90,6 +90,18 @@ namespace FangChain
                     UpdateUserSummary(addToUserBalanceTransaction.PublicKeyBase58,
                         userSummary => userSummary.Balance += addToUserBalanceTransaction.Amount);
                 }
+                else if (transaction.TransactionType is TransactionType.EnableUser)
+                {
+                    var enableUserTransaction = (EnableUserTransaction)transaction;
+                    UpdateUserSummary(enableUserTransaction.PublicKeyBase58,
+                        userSummary => userSummary.Disabled = false);
+                }
+                else if (transaction.TransactionType is TransactionType.DisableUser)
+                {
+                    var disableUserTransaction = (DisableUserTransaction)transaction;
+                    UpdateUserSummary(disableUserTransaction.PublicKeyBase58,
+                        userSummary => userSummary.Disabled = true);
+                }
             }
         }
     }

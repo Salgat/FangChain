@@ -90,7 +90,7 @@ hostCommand.SetHandler(async (string? blockchainPath, string credentialsPath, Ca
                 foreach (var proposedTransaction in pendingOperations.PendingTransactions)
                 {
                     proposedBlock = new BlockModel(nextBlockIndex, previousBlockHash, allowedTransactions.Concat(new[] { proposedTransaction.Transaction }));
-                    if (blockchainRules.IsBlockAdditionValid(currentBlockchain, proposedBlock))
+                    if (blockchainRules.IsBlockAdditionValid(proposedBlock))
                     {
                         allowedTransactions.Add(proposedTransaction.Transaction);
                     }
