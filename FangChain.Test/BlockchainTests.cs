@@ -5,9 +5,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Net.Http.Json;
 using System.Numerics;
 using System.Threading;
@@ -122,17 +124,17 @@ namespace FangChain.Test
             Assert.Equal(1, signatures.Count);
             Assert.Equal(creatorKeys.PublicKeyBase58, signatures[0].Value<string>(nameof(Base58PublicAndPrivateKeys.PublicKeyBase58)));
 
-            var promoteUserTransaction = transactions.SingleOrDefault(t => (TransactionType)t.Value<int>(nameof(TransactionType)) == TransactionType.PromoteUser);
-            Assert.NotNull(promoteUserTransaction);
-            Assert.Equal(UserDesignation.SuperAdministrator, (UserDesignation)promoteUserTransaction.Value<int>(nameof(UserDesignation)));
+            var designateUserTransaction = transactions.SingleOrDefault(t => (TransactionType)t.Value<int>(nameof(TransactionType)) == TransactionType.DesignateUser);
+            Assert.NotNull(designateUserTransaction);
+            Assert.Equal(UserDesignation.SuperAdministrator, (UserDesignation)designateUserTransaction.Value<int>(nameof(UserDesignation)));
 
-            var addAliasTransaction = transactions.SingleOrDefault(t => (TransactionType)t.Value<int>(nameof(TransactionType)) == TransactionType.AddAlias);
-            Assert.NotNull(addAliasTransaction);
-            Assert.Equal(BlockModel.CreatorAlias, addAliasTransaction.Value<string>(nameof(AddAliasTransaction.Alias)));
+            var setAliasTransaction = transactions.SingleOrDefault(t => (TransactionType)t.Value<int>(nameof(TransactionType)) == TransactionType.SetAlias);
+            Assert.NotNull(setAliasTransaction);
+            Assert.Equal(BlockModel.CreatorAlias, setAliasTransaction.Value<string>(nameof(SetAliasTransaction.Alias)));
         }
 
         [Fact]
-        public async Task ProposeTransaction_PromoteUser_Verified()
+        public async Task ProposeTransaction_DesignateUser_Verified()
         {
             await CreateAndInitializeBlockchain();
             var client = _factory.CreateClient();
@@ -142,28 +144,12 @@ namespace FangChain.Test
             var creatorKeys = await _factory.Services.GetRequiredService<ILoader>().LoadKeysAsync(_credentialsPath);
             var secondUserKeys = await _factory.Services.GetRequiredService<ILoader>().LoadKeysAsync(secondUserCredentialsPath);
 
-            // Promote second User to verified
-            var promoteUserTransaction = new PromoteUserTransaction(creatorKeys.PublicKeyBase58, UserDesignation.Verified);
-            promoteUserTransaction.AddSignature(PublicAndPrivateKeys.FromBase58(creatorKeys));
-            var proposedTransaction = new PendingTransaction()
-            {
-                DateTimeRecieved = DateTime.UtcNow,
-                ExpireAfter = DateTimeOffset.MaxValue,
-                MaxBlockIndexToAddTo = long.MaxValue,
-                TransactionJson = JObject.FromObject(promoteUserTransaction).ToString()
-                // TODO: Add signatures to PendingTransaction that must match the Transaction.
-                // Even if transaction is signed, there's nothing stopping
-                // a discarded transaction from being proposed by a malicious actor
-            };
-            var response = await client.PostAsJsonAsync($"/transaction", proposedTransaction);
-            Assert.True(response.IsSuccessStatusCode);
-            await WaitUntil(async () => 
-            {
-                return await client.GetFromJsonAsync<bool>($"/transaction/confirmed?transactionHash={promoteUserTransaction.GetHashString()}");
-            });
+            // designate second User to verified
+            var designateUserTransaction = new DesignateUserTransaction(creatorKeys.PublicKeyBase58, UserDesignation.Verified);
+            await PrepareAndAwaitTransaction(client, designateUserTransaction, creatorKeys);
 
             // Check that transaction has been added in next block
-            response = await client.GetAsync($"/blockchain/blocks?fromIndex=0&toIndex=50");
+            var response = await client.GetAsync($"/blockchain/blocks?fromIndex=0&toIndex=50");
             var responseJson = JArray.Parse(await response.Content.ReadAsStringAsync());
             Assert.Equal(2, responseJson.Count);
 
@@ -190,28 +176,81 @@ namespace FangChain.Test
             // Add balance to newly created user
             BigInteger amountToAdd = 123456789;
             var addBalanceToUserTransaction = new AddToUserBalanceTransaction(secondUserKeys.PublicKeyBase58, amountToAdd);
-            addBalanceToUserTransaction.AddSignature(PublicAndPrivateKeys.FromBase58(creatorKeys));
-            var proposedTransaction = new PendingTransaction()
-            {
-                DateTimeRecieved = DateTime.UtcNow,
-                ExpireAfter = DateTimeOffset.MaxValue,
-                MaxBlockIndexToAddTo = long.MaxValue,
-                TransactionJson = JObject.FromObject(addBalanceToUserTransaction).ToString()
-                // TODO: Add signatures to PendingTransaction that must match the Transaction.
-                // Even if transaction is signed, there's nothing stopping
-                // a discarded transaction from being proposed by a malicious actor
-            };
-            var response = await client.PostAsJsonAsync($"/transaction", proposedTransaction);
-            Assert.True(response.IsSuccessStatusCode);
-            await WaitUntil(async () =>
-            {
-                return await client.GetFromJsonAsync<bool>($"/transaction/confirmed?transactionHash={addBalanceToUserTransaction.GetHashString()}");
-            });
+            await PrepareAndAwaitTransaction(client, addBalanceToUserTransaction, creatorKeys);
 
             var amountQueried = await client.GetStringAsync($"/user/balance?userId={secondUserKeys.PublicKeyBase58}");
             var amountQueriedParsed = JObject.Parse(amountQueried).ToObject<UserBalanceResponse>();
             Assert.Equal(secondUserKeys.PublicKeyBase58, amountQueriedParsed.PublicKeyBase58);
             Assert.Equal(amountToAdd, amountQueriedParsed.UserBalance);
+        }
+
+        [Fact]
+        public async Task CompactBlocks_Success()
+        {
+            await CreateAndInitializeBlockchain();
+            var client = _factory.CreateClient();
+            var secondUserCredentialsPath = Path.Combine(_testDirectory, $"testCredentials-{Guid.NewGuid():N}.json");
+            await CreateKeys(secondUserCredentialsPath);
+
+            var creatorKeys = await _factory.Services.GetRequiredService<ILoader>().LoadKeysAsync(_credentialsPath);
+            var secondUserKeys = await _factory.Services.GetRequiredService<ILoader>().LoadKeysAsync(secondUserCredentialsPath);
+
+            // Create blockchain with 500 add transactions spread among 5 blocks
+            BigInteger total = 0;
+            var random = new Random((int)DateTimeOffset.UtcNow.Ticks);
+            for (var i = 0; i < 5; ++i)
+            {
+                var addTransactions = Enumerable
+                    .Range(0, 100)
+                    .Select(_ =>
+                    {
+                        var amountToAdd = random.Next();
+                        total += amountToAdd;
+                        return new AddToUserBalanceTransaction(secondUserKeys.PublicKeyBase58, amountToAdd);
+                    });
+                await PrepareAndAwaitTransactions(client, addTransactions, creatorKeys);
+            }
+
+            var response = await client.GetAsync($"/blockchain/blocks?fromIndex=0&toIndex=99");
+            var responseJson = JArray.Parse(await response.Content.ReadAsStringAsync());
+        }
+
+        #region Helper Methods
+        private static Task PrepareAndAwaitTransaction<TTransaction>(HttpClient client, TTransaction transaction,
+            params Base58PublicAndPrivateKeys[] keysToSignWith) where TTransaction : TransactionModel
+            => PrepareAndAwaitTransactions(client, new[] { transaction }, keysToSignWith);
+
+        private static async Task PrepareAndAwaitTransactions<TTransaction>(HttpClient client, IEnumerable<TTransaction> transactions, 
+            params Base58PublicAndPrivateKeys[] keysToSignWith) where TTransaction : TransactionModel
+        {
+            foreach (var transaction in transactions)
+            {
+                foreach (var key in keysToSignWith)
+                {
+                    transaction.AddSignature(PublicAndPrivateKeys.FromBase58(key));
+                }
+
+                var proposedTransaction = new PendingTransaction()
+                {
+                    DateTimeRecieved = DateTime.UtcNow,
+                    ExpireAfter = DateTimeOffset.MaxValue,
+                    MaxBlockIndexToAddTo = long.MaxValue,
+                    TransactionJson = JObject.FromObject(transaction).ToString()
+                    // TODO: Add signatures to PendingTransaction that must match the Transaction.
+                    // Even if transaction is signed, there's nothing stopping
+                    // a discarded transaction from being proposed by a malicious actor
+                };
+
+                var response = await client.PostAsJsonAsync($"/transaction", proposedTransaction);
+                Assert.True(response.IsSuccessStatusCode);
+            }
+            await WaitUntil(async () =>
+            {
+                var transactionsToCheck = transactions.Select(t 
+                    => client.GetFromJsonAsync<bool>($"/transaction/confirmed?transactionHash={t.GetHashString()}")).ToList();
+                await Task.WhenAll(transactionsToCheck);
+                return transactionsToCheck.All(t => t.Result);
+            });
         }
 
         private static async Task WaitUntil(Func<Task<bool>> condition, TimeSpan? maxWaitTime = default)
@@ -228,5 +267,6 @@ namespace FangChain.Test
             }
             throw new TimeoutException($"Condition exceeded max wait time.");
         }
+        #endregion
     }
 }

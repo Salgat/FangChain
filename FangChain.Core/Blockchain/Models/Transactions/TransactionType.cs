@@ -8,8 +8,8 @@ namespace FangChain
 {
     public enum TransactionType
     {
-        AddAlias = 0,
-        PromoteUser = 100,
+        SetAlias = 0,
+        DesignateUser = 100,
 
         // Balance
         AddToUserBalance = 200,

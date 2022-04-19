@@ -33,24 +33,21 @@ namespace FangChain
                     }
                 }
 
-                if (transaction.TransactionType is TransactionType.PromoteUser)
+                if (transaction is DesignateUserTransaction)
                 {
                     // Ensure quorum
                     if (!HasQuorum(transaction, UserDesignation.SuperAdministrator)) return false;
                 }
-                else if (transaction.TransactionType is TransactionType.AddToUserBalance)
+                else if (transaction is AddToUserBalanceTransaction addToUserBalanceTransaction)
                 {
-                    var addToUserBalanceTransaction = (AddToUserBalanceTransaction)transaction;
                     var userBalance = GetUserBalance(addToUserBalanceTransaction.PublicKeyBase58, updatedUserBalances);
                     updatedUserBalances[addToUserBalanceTransaction.PublicKeyBase58] = userBalance + addToUserBalanceTransaction.Amount;
 
                     // Ensure quorum
                     if (!HasQuorum(transaction, UserDesignation.SuperAdministrator)) return false;
                 }
-                else if (transaction.TransactionType is TransactionType.TransferToUserBalance)
+                else if (transaction is TransferToUserBalanceTransaction transferToUserBalanceTransaction)
                 {
-                    var transferToUserBalanceTransaction = (TransferToUserBalanceTransaction)transaction;
-
                     // Ensure sending user signed transaction
                     if (!transaction.Signatures.Any(s => s.PublicKeyBase58 == transferToUserBalanceTransaction.FromPublicKeyBase58))
                     {
@@ -66,9 +63,8 @@ namespace FangChain
                     var toUserBalance = GetUserBalance(transferToUserBalanceTransaction.ToPublicKeyBase58, updatedUserBalances);
                     updatedUserBalances[transferToUserBalanceTransaction.ToPublicKeyBase58] = toUserBalance + transferToUserBalanceTransaction.Amount;
                 }
-                else if (transaction.TransactionType is TransactionType.DisableUser)
+                else if (transaction is DisableUserTransaction disableUserTransaction)
                 {
-                    var disableUserTransaction = (DisableUserTransaction)transaction;
                     if (_blockchainState.UserSummaries.TryGetValue(disableUserTransaction.PublicKeyBase58, out var userSummary) &&
                         userSummary.Disabled == true)
                     {
@@ -79,9 +75,8 @@ namespace FangChain
                     // Ensure quorum
                     if (!HasQuorum(transaction, UserDesignation.SuperAdministrator)) return false;
                 }
-                else if (transaction.TransactionType is TransactionType.EnableUser)
+                else if (transaction is EnableUserTransaction enableUserTransaction)
                 {
-                    var enableUserTransaction = (EnableUserTransaction)transaction;
                     if (_blockchainState.UserSummaries.TryGetValue(enableUserTransaction.PublicKeyBase58, out var userSummary) &&
                         userSummary.Disabled == false)
                     {
@@ -92,10 +87,8 @@ namespace FangChain
                     // Ensure quorum
                     if (!HasQuorum(transaction, UserDesignation.SuperAdministrator)) return false;
                 }
-                else if (transaction.TransactionType is TransactionType.AddToken)
+                else if (transaction is AddTokenTransaction addTokenTransaction)
                 {
-                    var addTokenTransaction = (AddTokenTransaction)transaction;
-
                     // Prevent duplicate tokens
                     if (_blockchainState.TokenOwners.ContainsKey(addTokenTransaction.TokenId) || 
                         !updatedTokenOwners.TryAdd(addTokenTransaction.TokenId, addTokenTransaction.PublicKeyBase58)) return false;
@@ -104,9 +97,8 @@ namespace FangChain
                     // Ensure quorum
                     if (!HasQuorum(transaction, UserDesignation.SuperAdministrator)) return false;
                 }
-                else if (transaction.TransactionType is TransactionType.RemoveToken)
+                else if (transaction is RemoveTokenTransaction removeTokenTransaction)
                 {
-                    var removeTokenTransaction = (RemoveTokenTransaction)transaction;
                     if (removedTokens.Contains(removeTokenTransaction.TokenId))
                     {
                         // Token was already removed and not added back
@@ -127,9 +119,8 @@ namespace FangChain
                     }
                     removedTokens.Add(removeTokenTransaction.TokenId);
                 }
-                else if (transaction.TransactionType is TransactionType.TransferToken)
+                else if (transaction is TransferTokenTransaction transferTokenTransaction)
                 {
-                    var transferTokenTransaction = (TransferTokenTransaction)transaction;
                     if (removedTokens.Contains(transferTokenTransaction.TokenId))
                     {
                         // Token was already removed and not added back

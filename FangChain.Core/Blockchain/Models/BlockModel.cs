@@ -19,6 +19,9 @@ namespace FangChain
         public string PreviousBlockHashBase58 { get; }
         public ImmutableArray<TransactionModel> Transactions { get; } = ImmutableArray<TransactionModel>.Empty;
         public ImmutableArray<SignatureModel> Signatures { get; private set; } = ImmutableArray<SignatureModel>.Empty;
+        public virtual bool IsCompacted => false;
+
+        public BlockModel() { }
 
         public BlockModel(long index, string previousBlockHashBase58, IEnumerable<TransactionModel> transactions)
         {
@@ -50,16 +53,16 @@ namespace FangChain
             using var secp256k1 = new Secp256k1();
             var base58PublicKey = initialUserKeys.GetBase58PublicKey();
 
-            // Initial block promotes creator of blockchain
+            // Initial block designates creator of blockchain
             var firstUserTransactions = new List<TransactionModel>
             {
-                new PromoteUserTransaction(base58PublicKey, UserDesignation.SuperAdministrator)
+                new DesignateUserTransaction(base58PublicKey, UserDesignation.SuperAdministrator)
             };
-            var promoteTransactionSignature = firstUserTransactions.Single().CreateSignature(initialUserKeys);
-            firstUserTransactions.Single().SetSignatures(new [] { promoteTransactionSignature });
+            var designateTransactionSignature = firstUserTransactions.Single().CreateSignature(initialUserKeys);
+            firstUserTransactions.Single().SetSignatures(new [] { designateTransactionSignature });
 
             // Set block creator's alias to "creator"
-            var creatorAliasTransaction = new AddAliasTransaction(base58PublicKey, CreatorAlias);
+            var creatorAliasTransaction = new SetAliasTransaction(base58PublicKey, CreatorAlias);
             var creatorAliasTransactionSignature = creatorAliasTransaction.CreateSignature(initialUserKeys);
             creatorAliasTransaction.SetSignatures(new [] { creatorAliasTransactionSignature });
             firstUserTransactions.Add(creatorAliasTransaction);
@@ -79,10 +82,11 @@ namespace FangChain
         /// <param name="previousBlockHash"></param>
         /// <param name="transactions"></param>
         /// <returns></returns>
-        public byte[] GetHash()
+        public virtual byte[] GetHash()
         {
             // Return a SHA-256 hash of the block
             using var contentsToHash = new MemoryStream();
+            contentsToHash.Write(BitConverter.GetBytes(IsCompacted));
             contentsToHash.Write(BitConverter.GetBytes(BlockIndex));
             contentsToHash.Write(Encoding.ASCII.GetBytes(PreviousBlockHashBase58));
             foreach (var transaction in Transactions)

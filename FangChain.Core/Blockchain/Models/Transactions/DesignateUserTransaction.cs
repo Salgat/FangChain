@@ -8,13 +8,13 @@ using System.Threading.Tasks;
 
 namespace FangChain
 {
-    public class PromoteUserTransaction : TransactionModel
+    public class DesignateUserTransaction : TransactionModel
     {
-        public override TransactionType TransactionType => TransactionType.PromoteUser;
+        public override TransactionType TransactionType => TransactionType.DesignateUser;
         public string PublicKeyBase58 { get; init; }
         public UserDesignation UserDesignation { get; init; }
 
-        public PromoteUserTransaction(string publicKeyBase58, UserDesignation designation)
+        public DesignateUserTransaction(string publicKeyBase58, UserDesignation designation)
         {
             PublicKeyBase58 = publicKeyBase58;
             UserDesignation = designation;

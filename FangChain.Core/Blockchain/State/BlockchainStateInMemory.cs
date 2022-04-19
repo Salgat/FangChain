@@ -72,18 +72,18 @@ namespace FangChain
             foreach (var transaction in transactions)
             {
                 _confirmedTransactions[transaction.GetHashString()] = transaction;
-                if (transaction.TransactionType is TransactionType.AddAlias)
+                if (transaction.TransactionType is TransactionType.SetAlias)
                 {
-                    var addAliasTransaction = (AddAliasTransaction)transaction;
-                    UpdateUserSummary(addAliasTransaction.PublicKeyBase58, 
-                        userSummary => userSummary.Alias = addAliasTransaction.Alias);
-                    UserAliasToPublicKeyBase58[addAliasTransaction.Alias] = addAliasTransaction.PublicKeyBase58;
+                    var setAliasTransaction = (SetAliasTransaction)transaction;
+                    UpdateUserSummary(setAliasTransaction.PublicKeyBase58, 
+                        userSummary => userSummary.Alias = setAliasTransaction.Alias);
+                    UserAliasToPublicKeyBase58[setAliasTransaction.Alias] = setAliasTransaction.PublicKeyBase58;
                 }
-                else if (transaction.TransactionType is TransactionType.PromoteUser)
+                else if (transaction.TransactionType is TransactionType.DesignateUser)
                 {
-                    var promoteUserTransaction = (PromoteUserTransaction)transaction;
-                    UpdateUserSummary(promoteUserTransaction.PublicKeyBase58, 
-                        userSummary => userSummary.Designation = promoteUserTransaction.UserDesignation);
+                    var designateUserTransaction = (DesignateUserTransaction)transaction;
+                    UpdateUserSummary(designateUserTransaction.PublicKeyBase58, 
+                        userSummary => userSummary.Designation = designateUserTransaction.UserDesignation);
                 }
                 else if (transaction.TransactionType is TransactionType.AddToUserBalance)
                 {

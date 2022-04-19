@@ -64,6 +64,7 @@ namespace FangChain
 
         private static BlockModel DeserializeBlock(JObject blockJson)
         {
+
             var index = blockJson[nameof(BlockModel.BlockIndex)].ToObject<long>();
             var previousBlockHashBase58 = blockJson[nameof(BlockModel.PreviousBlockHashBase58)].ToString();
 
@@ -78,7 +79,18 @@ namespace FangChain
             var signaturesJArray = blockJson[nameof(BlockModel.Signatures)];
             var signatures = signaturesJArray.ToObject<IEnumerable<SignatureModel>>();
 
-            var block = new BlockModel(index, previousBlockHashBase58, transactions);
+            BlockModel block;
+            if (blockJson.Value<bool>(nameof(BlockModel.IsCompacted)))
+            {
+                var nextIndex = blockJson.Value<int>(nameof(CompactedBlockModel.NextBlockIndex));
+                var nextBlockHashBase58 = blockJson.Value<string>(nameof(CompactedBlockModel.NextBlockHashBase58));
+                var compactedBlockHashes = blockJson[nameof(CompactedBlockModel.CompactedBlockHashes)].ToObject<IEnumerable<string>>().ToImmutableArray();
+                block = new CompactedBlockModel(index, nextIndex, previousBlockHashBase58, nextBlockHashBase58, transactions, compactedBlockHashes);
+            } 
+            else
+            {
+                block = new BlockModel(index, previousBlockHashBase58, transactions);
+            }
             block.SetSignatures(signatures);
 
             return block;
