@@ -69,61 +69,53 @@ namespace FangChain
                 });
             }
 
-            foreach (var transaction in transactions)
+            void HandleTransaction(TransactionModel? transaction)
             {
                 _confirmedTransactions[transaction.GetHashString()] = transaction;
-                if (transaction.TransactionType is TransactionType.SetAlias)
+                if (transaction is SetAliasTransaction setAliasTransaction)
                 {
-                    var setAliasTransaction = (SetAliasTransaction)transaction;
-                    UpdateUserSummary(setAliasTransaction.PublicKeyBase58, 
+                    UpdateUserSummary(setAliasTransaction.PublicKeyBase58,
                         userSummary => userSummary.Alias = setAliasTransaction.Alias);
                     UserAliasToPublicKeyBase58[setAliasTransaction.Alias] = setAliasTransaction.PublicKeyBase58;
                 }
-                else if (transaction.TransactionType is TransactionType.DesignateUser)
+                else if (transaction is DesignateUserTransaction designateUserTransaction)
                 {
-                    var designateUserTransaction = (DesignateUserTransaction)transaction;
-                    UpdateUserSummary(designateUserTransaction.PublicKeyBase58, 
+                    UpdateUserSummary(designateUserTransaction.PublicKeyBase58,
                         userSummary => userSummary.Designation = designateUserTransaction.UserDesignation);
                 }
-                else if (transaction.TransactionType is TransactionType.AddToUserBalance)
+                else if (transaction is AddToUserBalanceTransaction addToUserBalanceTransaction)
                 {
-                    var addToUserBalanceTransaction = (AddToUserBalanceTransaction)transaction;
                     UpdateUserSummary(addToUserBalanceTransaction.PublicKeyBase58,
                         userSummary => userSummary.Balance += addToUserBalanceTransaction.Amount);
                 }
-                else if (transaction.TransactionType is TransactionType.EnableUser)
+                else if (transaction is EnableUserTransaction enableUserTransaction)
                 {
-                    var enableUserTransaction = (EnableUserTransaction)transaction;
                     UpdateUserSummary(enableUserTransaction.PublicKeyBase58,
                         userSummary => userSummary.Disabled = false);
                 }
-                else if (transaction.TransactionType is TransactionType.DisableUser)
+                else if (transaction is DisableUserTransaction disableUserTransaction)
                 {
-                    var disableUserTransaction = (DisableUserTransaction)transaction;
                     UpdateUserSummary(disableUserTransaction.PublicKeyBase58,
                         userSummary => userSummary.Disabled = true);
                 }
-                else if (transaction.TransactionType is TransactionType.AddToken)
+                else if (transaction is AddTokenTransaction addTokenTransaction)
                 {
-                    var addTokenTransaction = (AddTokenTransaction)transaction;
                     UpdateUserSummary(addTokenTransaction.PublicKeyBase58,
                         userSummary => userSummary.Tokens = userSummary
                             .Tokens
                             .Add(addTokenTransaction.TokenId, addTokenTransaction.Contents));
                     TokenOwners[addTokenTransaction.TokenId] = addTokenTransaction.PublicKeyBase58;
                 }
-                else if (transaction.TransactionType is TransactionType.RemoveToken)
+                else if (transaction is RemoveTokenTransaction removeTokenTransaction)
                 {
-                    var removeTokenTransaction = (RemoveTokenTransaction)transaction;
                     UpdateUserSummary(removeTokenTransaction.PublicKeyBase58,
                         userSummary => userSummary.Tokens = userSummary
                             .Tokens
                             .Remove(removeTokenTransaction.TokenId));
                     TokenOwners.TryRemove(removeTokenTransaction.TokenId, out var _);
                 }
-                else if (transaction.TransactionType is TransactionType.TransferToken)
+                else if (transaction is TransferTokenTransaction transferTokenTransaction)
                 {
-                    var transferTokenTransaction = (TransferTokenTransaction)transaction;
                     var tokenContents = default(string);
                     UpdateUserSummary(transferTokenTransaction.FromPublicKeyBase58,
                         userSummary =>
@@ -138,6 +130,21 @@ namespace FangChain
                             .Tokens
                             .Add(transferTokenTransaction.TokenId, tokenContents));
                     TokenOwners[transferTokenTransaction.TokenId] = transferTokenTransaction.ToPublicKeyBase58;
+                }
+            }
+
+            foreach (var transaction in transactions)
+            {
+                if (transaction is LumpedTransaction lumpedTransaction)
+                {
+                    foreach (var entry in lumpedTransaction.Transactions)
+                    {
+                        HandleTransaction(entry);
+                    }
+                } 
+                else
+                {
+                    HandleTransaction(transaction);
                 }
             }
         }

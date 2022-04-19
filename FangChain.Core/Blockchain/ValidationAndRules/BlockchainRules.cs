@@ -21,7 +21,8 @@ namespace FangChain
             var updatedUserBalances = new Dictionary<string, BigInteger>(); // Used to track if users will reach below minimum required balance
             var updatedTokenOwners = new Dictionary<string, string>(); // TokenId => Owner's PublicKeyBase58
             var removedTokens = new HashSet<string>(); // TokenId
-            foreach (var transaction in proposedBlock.Transactions)
+
+            bool ValidateTransaction(TransactionModel transaction)
             {
                 foreach (var signature in transaction.Signatures)
                 {
@@ -90,7 +91,7 @@ namespace FangChain
                 else if (transaction is AddTokenTransaction addTokenTransaction)
                 {
                     // Prevent duplicate tokens
-                    if (_blockchainState.TokenOwners.ContainsKey(addTokenTransaction.TokenId) || 
+                    if (_blockchainState.TokenOwners.ContainsKey(addTokenTransaction.TokenId) ||
                         !updatedTokenOwners.TryAdd(addTokenTransaction.TokenId, addTokenTransaction.PublicKeyBase58)) return false;
                     removedTokens.Remove(addTokenTransaction.TokenId);
 
@@ -140,6 +141,34 @@ namespace FangChain
                     if (tokenOwner != transferTokenTransaction.FromPublicKeyBase58) return false;
 
                     updatedTokenOwners[transferTokenTransaction.TokenId] = transferTokenTransaction.ToPublicKeyBase58;
+                }
+                return true;
+            }
+
+            foreach (var transaction in proposedBlock.Transactions)
+            {
+                if (transaction is LumpedTransaction lumpedTransaction)
+                {
+                    var signersBase58Addresses = new HashSet<string>();
+                    foreach (var entry in lumpedTransaction.Transactions)
+                    {
+                        if (!ValidateTransaction(transaction)) return false;
+                        foreach (var signature in transaction.Signatures)
+                        {
+                            signersBase58Addresses.Add(signature.PublicKeyBase58);
+                        }
+                    }
+
+                    // Ensure all transaction participants also sign the lumped transaction
+                    var lumpedSigners = lumpedTransaction.Signatures.Select(s => s.PublicKeyBase58).ToHashSet();
+                    foreach (var signers in signersBase58Addresses)
+                    {
+                        if (!lumpedSigners.Contains(signers)) return false;
+                    }
+                }
+                else
+                {
+                    if (!ValidateTransaction(transaction)) return false;
                 }
             }
             return true;

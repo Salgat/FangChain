@@ -62,58 +62,73 @@ namespace FangChain
                 }
             }
 
+            void ProcessTransaction(TransactionModel? transaction)
+            {
+                if (transaction is SetAliasTransaction setAliasTransaction)
+                {
+                    aliasChanges[setAliasTransaction.PublicKeyBase58] = setAliasTransaction.Alias;
+                }
+                else if (transaction is AddToUserBalanceTransaction addToUserBalanceTransaction)
+                {
+                    AddToUserBalance(addToUserBalanceTransaction.PublicKeyBase58, addToUserBalanceTransaction.Amount);
+                }
+                else if (transaction is TransferToUserBalanceTransaction transferToUserBalanceTransaction)
+                {
+                    AddToUserBalance(transferToUserBalanceTransaction.FromPublicKeyBase58, -1 * transferToUserBalanceTransaction.Amount);
+                    AddToUserBalance(transferToUserBalanceTransaction.ToPublicKeyBase58, transferToUserBalanceTransaction.Amount);
+                }
+                else if (transaction is AddTokenTransaction addTokenTransaction)
+                {
+                    nftChanges[addTokenTransaction.TokenId] = (string.Empty, addTokenTransaction.PublicKeyBase58, addTokenTransaction.Contents);
+                }
+                else if (transaction is RemoveTokenTransaction removeTokenTransaction)
+                {
+                    if (nftChanges.ContainsKey(removeTokenTransaction.TokenId))
+                    {
+                        nftChanges.Remove(removeTokenTransaction.TokenId);
+                    }
+                }
+                else if (transaction is TransferTokenTransaction transferTokenTransaction)
+                {
+                    if (nftChanges.TryGetValue(transferTokenTransaction.TokenId, out var tokenInfo))
+                    {
+                        nftChanges[transferTokenTransaction.TokenId] = (tokenInfo.fromStart, transferTokenTransaction.ToPublicKeyBase58, string.Empty);
+                    }
+                    else
+                    {
+                        nftChanges[transferTokenTransaction.TokenId] = (transferTokenTransaction.FromPublicKeyBase58, transferTokenTransaction.ToPublicKeyBase58, string.Empty);
+                    }
+                }
+                else if (transaction is EnableUserTransaction enableUserTransaction)
+                {
+                    disabledUsers.Remove(enableUserTransaction.PublicKeyBase58);
+                    enabledUsers.Add(enableUserTransaction.PublicKeyBase58);
+                }
+                else if (transaction is DisableUserTransaction disableUserTransaction)
+                {
+                    enabledUsers.Remove(disableUserTransaction.PublicKeyBase58);
+                    disabledUsers.Add(disableUserTransaction.PublicKeyBase58);
+                }
+                else if (transaction is DesignateUserTransaction designateUserTransaction)
+                {
+                    userDesignations[designateUserTransaction.PublicKeyBase58] = designateUserTransaction.UserDesignation;
+                }
+            }
+
             foreach (var block in blocks)
             {
                 foreach (var transaction in block.Transactions)
                 {
-                    if (transaction is SetAliasTransaction setAliasTransaction)
+                    if (transaction is LumpedTransaction lumpedTransaction)
                     {
-                        aliasChanges[setAliasTransaction.PublicKeyBase58] = setAliasTransaction.Alias;
-                    }
-                    else if (transaction is AddToUserBalanceTransaction addToUserBalanceTransaction)
-                    {
-                        AddToUserBalance(addToUserBalanceTransaction.PublicKeyBase58, addToUserBalanceTransaction.Amount);
-                    }
-                    else if (transaction is TransferToUserBalanceTransaction transferToUserBalanceTransaction)
-                    {
-                        AddToUserBalance(transferToUserBalanceTransaction.FromPublicKeyBase58, -1 * transferToUserBalanceTransaction.Amount);
-                        AddToUserBalance(transferToUserBalanceTransaction.ToPublicKeyBase58, transferToUserBalanceTransaction.Amount);
-                    }
-                    else if (transaction is AddTokenTransaction addTokenTransaction)
-                    {
-                        nftChanges[addTokenTransaction.TokenId] = (string.Empty, addTokenTransaction.PublicKeyBase58, addTokenTransaction.Contents);
-                    }
-                    else if (transaction is RemoveTokenTransaction removeTokenTransaction)
-                    {
-                        if (nftChanges.ContainsKey(removeTokenTransaction.TokenId))
+                        foreach (var entry in lumpedTransaction.Transactions)
                         {
-                            nftChanges.Remove(removeTokenTransaction.TokenId);
+                            ProcessTransaction(entry);
                         }
                     }
-                    else if (transaction is TransferTokenTransaction transferTokenTransaction)
+                    else
                     {
-                        if (nftChanges.TryGetValue(transferTokenTransaction.TokenId, out var tokenInfo))
-                        {
-                            nftChanges[transferTokenTransaction.TokenId] = (tokenInfo.fromStart, transferTokenTransaction.ToPublicKeyBase58, string.Empty);
-                        }
-                        else
-                        {
-                            nftChanges[transferTokenTransaction.TokenId] = (transferTokenTransaction.FromPublicKeyBase58, transferTokenTransaction.ToPublicKeyBase58, string.Empty);
-                        }
-                    }
-                    else if (transaction is EnableUserTransaction enableUserTransaction)
-                    {
-                        disabledUsers.Remove(enableUserTransaction.PublicKeyBase58);
-                        enabledUsers.Add(enableUserTransaction.PublicKeyBase58);
-                    }
-                    else if (transaction is DisableUserTransaction disableUserTransaction)
-                    {
-                        enabledUsers.Remove(disableUserTransaction.PublicKeyBase58);
-                        disabledUsers.Add(disableUserTransaction.PublicKeyBase58);
-                    }
-                    else if (transaction is DesignateUserTransaction designateUserTransaction)
-                    {
-                        userDesignations[designateUserTransaction.PublicKeyBase58] = designateUserTransaction.UserDesignation;
+                        ProcessTransaction(transaction);
                     }
                 }
             }

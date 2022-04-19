@@ -22,6 +22,9 @@ namespace FangChain
         // Tokens
         AddToken = 600,
         RemoveToken = 700,
-        TransferToken = 800
+        TransferToken = 800,
+
+
+        Lumped = 900
     }
 }
