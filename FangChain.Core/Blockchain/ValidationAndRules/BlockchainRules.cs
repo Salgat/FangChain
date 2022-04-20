@@ -149,21 +149,11 @@ namespace FangChain
             {
                 if (transaction is LumpedTransaction lumpedTransaction)
                 {
-                    var signersBase58Addresses = new HashSet<string>();
+                    var signatures = lumpedTransaction.Signatures;
                     foreach (var entry in lumpedTransaction.Transactions)
                     {
-                        if (!ValidateTransaction(transaction)) return false;
-                        foreach (var signature in transaction.Signatures)
-                        {
-                            signersBase58Addresses.Add(signature.PublicKeyBase58);
-                        }
-                    }
-
-                    // Ensure all transaction participants also sign the lumped transaction
-                    var lumpedSigners = lumpedTransaction.Signatures.Select(s => s.PublicKeyBase58).ToHashSet();
-                    foreach (var signers in signersBase58Addresses)
-                    {
-                        if (!lumpedSigners.Contains(signers)) return false;
+                        entry.SetSignatures(signatures); // Override signatures
+                        if (!ValidateTransaction(entry)) return false;
                     }
                 }
                 else

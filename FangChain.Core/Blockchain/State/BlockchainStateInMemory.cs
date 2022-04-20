@@ -137,11 +137,13 @@ namespace FangChain
             {
                 if (transaction is LumpedTransaction lumpedTransaction)
                 {
+                    var signatures = lumpedTransaction.Signatures;
                     foreach (var entry in lumpedTransaction.Transactions)
                     {
+                        entry.SetSignatures(signatures);
                         HandleTransaction(entry);
                     }
-                } 
+                }
                 else
                 {
                     HandleTransaction(transaction);
