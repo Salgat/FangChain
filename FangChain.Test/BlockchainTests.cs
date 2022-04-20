@@ -58,7 +58,9 @@ namespace FangChain.Test
                 "--credentials-path",
                 _credentialsPath,
                 "--blockchain-path",
-                _testDirectory
+                _testDirectory,
+                "--manual-blockcreationtrigger",
+                true.ToString()
             };
             configuration["commandOverride"] = String.Join(" ", hostArgs);
             factory = factory.WithWebHostBuilder(builder =>
@@ -98,6 +100,12 @@ namespace FangChain.Test
             };
             var result = await CLI.Program.Main(args);
             Assert.Equal(0, result);
+        }
+
+        private static async Task ProcessPendingTransactions(HttpClient httpClient)
+        {
+            var response = await httpClient.PostAsync("/transaction/process", null).ConfigureAwait(false);
+            Assert.True(response.IsSuccessStatusCode);
         }
 
         [Fact]
@@ -244,6 +252,9 @@ namespace FangChain.Test
                 var response = await client.PostAsJsonAsync($"/transaction", proposedTransaction);
                 Assert.True(response.IsSuccessStatusCode);
             }
+
+            await ProcessPendingTransactions(client);
+            
             await WaitUntil(async () =>
             {
                 var transactionsToCheck = transactions.Select(t 

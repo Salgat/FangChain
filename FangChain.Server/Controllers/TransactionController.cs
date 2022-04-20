@@ -9,11 +9,16 @@ namespace FangChain.Server
     {
         private readonly IPendingTransactions _pendingTransactions;
         private readonly IBlockchainState _blockchainState;
+        private readonly IBlockchainAppender _blockchainAppender;
 
-        public TransactionController(IPendingTransactions pendingTransactions, IBlockchainState blockchainState)
+        public TransactionController(
+            IPendingTransactions pendingTransactions, 
+            IBlockchainState blockchainState,
+            IBlockchainAppender blockchainAppender)
         {
             _pendingTransactions = pendingTransactions;
             _blockchainState = blockchainState;
+            _blockchainAppender = blockchainAppender;
         }
 
         [HttpPost]
@@ -34,5 +39,10 @@ namespace FangChain.Server
         [Route("confirmed")]
         public bool IsTransactionConfirmed([FromQuery] string transactionHash)
             => _blockchainState.IsTransactionConfirmed(transactionHash);
+
+        [HttpPost]
+        [Route("process")]
+        public void ProcessPendingTransactions()
+            => _blockchainAppender.ProcessPendingTransactions();
     }
 }

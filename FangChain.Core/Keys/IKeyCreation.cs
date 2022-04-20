@@ -9,8 +9,8 @@ namespace FangChain
 {
     public struct PublicAndPrivateKeys
     {
-        public byte[] PublicKey { get; set; }
-        public byte[] PrivateKey { get; set; }
+        public byte[] PublicKey { get; init; }
+        public byte[] PrivateKey { get; init; }
 
         public static PublicAndPrivateKeys FromBase58(Base58PublicAndPrivateKeys base58Keys) => new()
             {
@@ -24,8 +24,8 @@ namespace FangChain
 
     public struct Base58PublicAndPrivateKeys
     {
-        public string PublicKeyBase58 { get; set; }
-        public string PrivateKeyBase58 { get; set; }
+        public string PublicKeyBase58 { get; init; }
+        public string PrivateKeyBase58 { get; init; }
     }
 
     public interface IKeyCreation

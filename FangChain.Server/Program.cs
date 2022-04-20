@@ -40,20 +40,23 @@ var defaultDirectory = Directory.GetCurrentDirectory();
 #region CLI setup
 var blockchainPathOption = new Option<string?>("--blockchain-path", "The path of the blockchain to use. Defaults to the current working directory.");
 var credentialsRequiredOption = new Option<string>("--credentials-path", "The path of the credentials to use.");
+var manualBlockCreationOption = new Option<bool?>("--manual-blockcreationtrigger", "Requires an action to trigger the creation of a new block.");
 
 var hostCommand = new Command("host", "Hosts the given blockchain.")
 {
     blockchainPathOption,
-    credentialsRequiredOption
+    credentialsRequiredOption,
+    manualBlockCreationOption
 };
-hostCommand.SetHandler(async (string? blockchainPath, string credentialsPath, CancellationToken cancellationToken) =>
+hostCommand.SetHandler(async (string? blockchainPath, string credentialsPath, bool? manualBlockCreation, CancellationToken cancellationToken) =>
 {
     Console.WriteLine($"Starting server.");
 
     // Load and validate blockchain
     blockchainPath ??= defaultDirectory;
     var loader = serviceProvider.GetRequiredService<ILoader>();
-    var hostCredentials = await loader.LoadKeysAsync(credentialsPath);
+    var hostCredentials = await loader.LoadKeysAsync(credentialsPath, cancellationToken);
+    serviceProvider.GetRequiredService<ICredentialsManager>().SetHostCredentials(hostCredentials);
     var blockchain = await loader.LoadBlockchainAsync(blockchainPath, cancellationToken);
 
     var validator = serviceProvider.GetRequiredService<IValidator>();
@@ -68,59 +71,30 @@ hostCommand.SetHandler(async (string? blockchainPath, string credentialsPath, Ca
 
     #region background jobs
     // On a configured interval, process proposed jobs in a background thread
-    // NOTE: This is the exclusive mutator of blockchain state, no other function does this.
-    var pendingOperations = serviceProvider.GetRequiredService<IPendingTransactions>();
-    var blockchainRules = serviceProvider.GetRequiredService<IBlockchainRules>();
-    var _ = Task.Run(async () =>
+    if (manualBlockCreation != true)
     {
-        while (true)
+        var blockchainAppender = serviceProvider.GetRequiredService<IBlockchainAppender>();
+        var _ = Task.Run(async () =>
         {
-            await Task.Delay(1000);
-            try
+            while (true)
             {
-                var currentBlockchain = blockchainState.GetBlockchain();
-                if (!currentBlockchain.Any()) continue;
-
-                var nextBlockIndex = currentBlockchain.Last().BlockIndex + 1;
-                var previousBlockHash = currentBlockchain.Last().GetHashString();
-
-                var allowedTransactions = new List<TransactionModel>();
-                BlockModel? proposedBlock = default;
-                pendingOperations.PurgeExpiredTransactions(DateTimeOffset.UtcNow, nextBlockIndex);
-                foreach (var proposedTransaction in pendingOperations.PendingTransactions)
+                await Task.Delay(1000);
+                try
                 {
-                    proposedBlock = new BlockModel(nextBlockIndex, previousBlockHash, allowedTransactions.Concat(new[] { proposedTransaction.Transaction }));
-                    if (blockchainRules.IsBlockAdditionValid(proposedBlock))
-                    {
-                        allowedTransactions.Add(proposedTransaction.Transaction);
-                    }
+                    blockchainAppender.ProcessPendingTransactions();
                 }
-                if (!allowedTransactions.Any()) continue;
-                proposedBlock = new BlockModel(nextBlockIndex, previousBlockHash, allowedTransactions);
-                proposedBlock.AddSignature(PublicAndPrivateKeys.FromBase58(hostCredentials));
-
-                // Add proposed transactions as a new block
-                if (proposedBlock == default) continue;
-                var proposedBlockchain = currentBlockchain.Add(proposedBlock);
-                blockchainState.SetBlockchain(proposedBlockchain);
-
-                // Flush pending transactions (as they are either included in the block or rejected)
-                foreach (var proposedTransaction in pendingOperations.PendingTransactions)
+                catch (Exception ex)
                 {
-                    pendingOperations.TryRemove(proposedTransaction);
+                    // TODO: Use a proper logger
+                    Console.WriteLine($"ERROR - Failed to process pending transactions");
                 }
             }
-            catch (Exception ex)
-            {
-                // TODO: Use a proper logger
-                Console.WriteLine($"ERROR - Failed to process pending transactions");
-            }
-        }
-    }, cancellationToken);
+        }, cancellationToken);
+    }
     #endregion
 
     await application.RunAsync(cancellationToken);
-}, blockchainPathOption, credentialsRequiredOption);
+}, blockchainPathOption, credentialsRequiredOption, manualBlockCreationOption);
 
 var rootCommand = new RootCommand
 {

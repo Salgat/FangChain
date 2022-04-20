@@ -18,6 +18,8 @@ namespace FangChain
             serviceCollection.AddTransient<ILoader, Loader>();
 
             // In-memory state
+            serviceCollection.AddSingleton<ICredentialsManager, CredentialsManager>();
+            serviceCollection.AddSingleton<IBlockchainAppender, BlockchainAppender>();
             serviceCollection.AddSingleton<IBlockchainState, BlockchainStateInMemory>();
             serviceCollection.AddSingleton<IPendingTransactions, PendingTransactionsInMemory>();
         }
