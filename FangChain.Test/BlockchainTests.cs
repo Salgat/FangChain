@@ -243,6 +243,12 @@ namespace FangChain.Test
             Assert.Equal(total, amountQueriedParsed.UserBalance);
         }
 
+        [Fact]
+        public async Task BlockchainPersisted()
+        {
+            // TODO: Ensure blockchain is properly persisted, including when a compaction occurs
+        }
+
         #region Helper Methods
         private static Task PrepareAndAwaitTransaction<TTransaction>(HttpClient client, TTransaction transaction,
             params Base58PublicAndPrivateKeys[] keysToSignWith) where TTransaction : TransactionModel
