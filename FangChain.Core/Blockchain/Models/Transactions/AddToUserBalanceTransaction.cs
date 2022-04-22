@@ -13,7 +13,7 @@ namespace FangChain
         public string PublicKeyBase58 { get; init; }
         public BigInteger Amount { get; init; }
 
-        public AddToUserBalanceTransaction(string publicKeyBase58, BigInteger amount)
+        public AddToUserBalanceTransaction(string publicKeyBase58, BigInteger amount, string transactionId) : base(transactionId)
         {
             PublicKeyBase58 = publicKeyBase58;
             Amount = amount;
@@ -21,6 +21,7 @@ namespace FangChain
 
         protected override void PopulateBytesFromProperties(MemoryStream stream)
         {
+            stream.Write(Encoding.ASCII.GetBytes(Id));
             stream.Write(BitConverter.GetBytes((int)TransactionType));
             stream.Write(Encoding.ASCII.GetBytes(PublicKeyBase58));
             stream.Write(Amount.ToByteArray());

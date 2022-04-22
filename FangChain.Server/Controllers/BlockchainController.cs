@@ -9,10 +9,14 @@ namespace FangChain
         private const int MaxPageSize = 100;
 
         private readonly IBlockchainState _blockchainState;
+        private readonly IBlockchainMutator _blockchainMutator;
 
-        public BlockchainController(IBlockchainState blockchainState) 
+        public BlockchainController(
+            IBlockchainState blockchainState,
+            IBlockchainMutator blockchainMutator) 
         {
             _blockchainState = blockchainState;
+            _blockchainMutator = blockchainMutator;
         }
 
         [HttpGet, Route("blocks")]
@@ -26,6 +30,12 @@ namespace FangChain
             var blockchain = _blockchainState.GetBlockchain();
             var selectedBlocks = blockchain.Where(block => block.BlockIndex >= fromIndex && block.BlockIndex <= toIndex);
             return selectedBlocks;
+        }
+
+        [HttpPost, Route("compact")]
+        public async Task Compact(long fromIndex, long toIndex)
+        {
+            _blockchainMutator.CompactBlockchain(fromIndex, toIndex);
         }
     }
 }

@@ -12,8 +12,14 @@ namespace FangChain
 {
     public abstract class TransactionModel
     {
+        public string Id { get; set; } = string.Empty;
         public abstract TransactionType TransactionType { get; }
         public ImmutableArray<SignatureModel> Signatures { get; set; } = ImmutableArray<SignatureModel>.Empty;
+
+        public TransactionModel(string transactionId)
+        {
+            Id = transactionId;
+        }
         
         public void SetSignatures(IEnumerable<SignatureModel> signatures)
         {

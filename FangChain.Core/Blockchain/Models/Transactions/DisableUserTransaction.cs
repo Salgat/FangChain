@@ -12,13 +12,14 @@ namespace FangChain
         public override TransactionType TransactionType => TransactionType.DisableUser;
         public string PublicKeyBase58 { get; init; }
 
-        public DisableUserTransaction(string publicKeyBase58)
+        public DisableUserTransaction(string publicKeyBase58, string transactionId) : base(transactionId)
         {
             PublicKeyBase58 = publicKeyBase58;
         }
 
         protected override void PopulateBytesFromProperties(MemoryStream stream)
         {
+            stream.Write(Encoding.ASCII.GetBytes(Id));
             stream.Write(BitConverter.GetBytes((int)TransactionType));
             stream.Write(Encoding.ASCII.GetBytes(PublicKeyBase58));
         }

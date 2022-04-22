@@ -73,7 +73,7 @@ hostCommand.SetHandler(async (string? blockchainPath, string credentialsPath, bo
     // On a configured interval, process proposed jobs in a background thread
     if (manualBlockCreation != true)
     {
-        var blockchainAppender = serviceProvider.GetRequiredService<IBlockchainAppender>();
+        var blockchainAppender = serviceProvider.GetRequiredService<IBlockchainMutator>();
         var _ = Task.Run(async () =>
         {
             while (true)

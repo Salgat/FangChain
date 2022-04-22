@@ -9,12 +9,12 @@ namespace FangChain.Server
     {
         private readonly IPendingTransactions _pendingTransactions;
         private readonly IBlockchainState _blockchainState;
-        private readonly IBlockchainAppender _blockchainAppender;
+        private readonly IBlockchainMutator _blockchainAppender;
 
         public TransactionController(
             IPendingTransactions pendingTransactions, 
             IBlockchainState blockchainState,
-            IBlockchainAppender blockchainAppender)
+            IBlockchainMutator blockchainAppender)
         {
             _pendingTransactions = pendingTransactions;
             _blockchainState = blockchainState;

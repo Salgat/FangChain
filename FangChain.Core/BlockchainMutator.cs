@@ -6,24 +6,27 @@ using System.Threading.Tasks;
 
 namespace FangChain
 {
-    public class BlockchainAppender : IBlockchainAppender
+    public class BlockchainMutator : IBlockchainMutator
     {
         private readonly IBlockchainState _blockchainState;
         private readonly IBlockchainRules _blockchainRules;
         private readonly IPendingTransactions _pendingTransactions;
         private readonly ICredentialsManager _credentialsManager;
+        private readonly ICompactor _compactor;
         private readonly object _lock = new ();
 
-        public BlockchainAppender(
+        public BlockchainMutator(
             IBlockchainState blockchainState,
             IBlockchainRules blockchainRules,
             IPendingTransactions pendingTransactions,
-            ICredentialsManager credentialsManager)
+            ICredentialsManager credentialsManager,
+            ICompactor compactor)
         {
             _blockchainState = blockchainState;
             _blockchainRules = blockchainRules;
             _pendingTransactions = pendingTransactions;
             _credentialsManager = credentialsManager;
+            _compactor = compactor;
         }
 
         public void ProcessPendingTransactions()
@@ -61,6 +64,16 @@ namespace FangChain
                 {
                     _pendingTransactions.TryRemove(proposedTransaction);
                 }
+            }
+        }
+
+        public void CompactBlockchain(long fromIndex, long toIndex)
+        {
+            lock (_lock)
+            {
+                var blockchain = _blockchainState.GetBlockchain();
+                var compactedBlockchain = _compactor.Compact(blockchain, fromIndex, toIndex);
+                _blockchainState.SetBlockchain(compactedBlockchain);
             }
         }
     }

@@ -6,8 +6,9 @@ namespace FangChain
     public interface IBlockchainState
     {
         ConcurrentDictionary<string, string> UserAliasToPublicKeyBase58 { get; }
-        ConcurrentDictionary<string, UserSummary> UserSummaries { get; set; } 
-        ConcurrentDictionary<string, string> TokenOwners { get; set; }
+        ConcurrentDictionary<string, UserSummary> UserSummaries { get; } 
+        ConcurrentDictionary<string, string> TokenOwners { get; }
+        ConcurrentBag<string> TransactionIds { get; }
 
         ImmutableArray<BlockModel> GetBlockchain();
         void SetBlockchain(IEnumerable<BlockModel> blockchain);

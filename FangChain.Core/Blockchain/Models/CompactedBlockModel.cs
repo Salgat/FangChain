@@ -139,40 +139,40 @@ namespace FangChain
             var transactions = new List<TransactionModel>();
             foreach (var (user, amount) in balanceChanges)
             {
-                var transaction = new AddToUserBalanceTransaction(user, amount);
+                var transaction = new AddToUserBalanceTransaction(user, amount, Guid.NewGuid().ToString());
                 transactions.Add(transaction);
             }
             foreach (var (tokenId, (fromUser, toUser, contents)) in nftChanges)
             {
                 if (!string.IsNullOrWhiteSpace(fromUser))
                 {
-                    var transaction = new TransferTokenTransaction(fromUser, toUser, tokenId);
+                    var transaction = new TransferTokenTransaction(fromUser, toUser, tokenId, Guid.NewGuid().ToString());
                     transactions.Add(transaction);
                 } 
                 else
                 {
-                    var transaction = new AddTokenTransaction(toUser, tokenId, contents);
+                    var transaction = new AddTokenTransaction(toUser, tokenId, contents, Guid.NewGuid().ToString());
                     transactions.Add(transaction);
                 }
             }
             foreach (var (user, alias) in aliasChanges)
             {
-                var transaction = new SetAliasTransaction(user, alias);
+                var transaction = new SetAliasTransaction(user, alias, Guid.NewGuid().ToString());
                 transactions.Add(transaction);
             }
             foreach (var user in disabledUsers)
             {
-                var transaction = new DisableUserTransaction(user);
+                var transaction = new DisableUserTransaction(user, Guid.NewGuid().ToString());
                 transactions.Add(transaction);
             }
             foreach (var user in enabledUsers)
             {
-                var transaction = new EnableUserTransaction(user);
+                var transaction = new EnableUserTransaction(user, Guid.NewGuid().ToString());
                 transactions.Add(transaction);
             }
             foreach (var (user, designation) in userDesignations)
             {
-                var transaction = new DesignateUserTransaction(user, designation);
+                var transaction = new DesignateUserTransaction(user, designation, Guid.NewGuid().ToString());
                 transactions.Add(transaction);
             }
 

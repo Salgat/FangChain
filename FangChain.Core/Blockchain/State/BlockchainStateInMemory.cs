@@ -9,7 +9,7 @@ namespace FangChain
         private readonly IValidator _validator;
 
         private List<BlockModel> _blockchain = null;
-        private readonly ConcurrentDictionary<string, TransactionModel> _confirmedTransactions = new();
+        private ConcurrentDictionary<string, TransactionModel> _confirmedTransactions = new();
 
         public BlockchainStateInMemory(IValidator validator)
         {
@@ -23,6 +23,10 @@ namespace FangChain
             lock (_lock)
             {
                 _blockchain = new List<BlockModel>(blockchain);
+                _userAliasToPublicKeyBase58 = new();
+                _userSummaries = new();
+                _tokenOwners = new();
+                _transactionIds = new();
                 foreach (var block in blockchain)
                 {
                     UpdateState(block.Transactions);
@@ -30,9 +34,68 @@ namespace FangChain
             }
         }
 
-        public ConcurrentDictionary<string, string> UserAliasToPublicKeyBase58 { get; } = new();
-        public ConcurrentDictionary<string, UserSummary> UserSummaries { get; set; } = new(); // Key = PublicKeyBase58
-        public ConcurrentDictionary<string, string> TokenOwners { get; set; } = new(); // TokenId => PublicKeyBase58
+        private ConcurrentDictionary<string, string> _userAliasToPublicKeyBase58 = new();
+        public ConcurrentDictionary<string, string> UserAliasToPublicKeyBase58
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _userAliasToPublicKeyBase58;
+                }
+            }
+            private set
+            {
+                _userAliasToPublicKeyBase58 = value;
+            }
+        }
+
+        private ConcurrentDictionary<string, UserSummary> _userSummaries = new();
+        public ConcurrentDictionary<string, UserSummary> UserSummaries { 
+            get
+            {
+                lock (_lock)
+                {
+                    return _userSummaries;
+                }
+            } 
+            private set
+            {
+                _userSummaries = value;
+            }
+        } // Key = PublicKeyBase58
+
+        private ConcurrentDictionary<string, string> _tokenOwners = new();
+        public ConcurrentDictionary<string, string> TokenOwners
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _tokenOwners;
+                }
+            }
+            private set
+            {
+                _tokenOwners = value;
+            }
+        } // TokenId => PublicKeyBase58
+
+        private ConcurrentBag<string> _transactionIds = new();
+        public ConcurrentBag<string> TransactionIds
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _transactionIds;
+                }
+            }
+            private set
+            {
+                _transactionIds = value;
+            }
+        }
 
         /// <summary>
         /// Tries adding the block to the blockchain. If validation fails, the blockchain remains unchanged and returns false.
@@ -72,6 +135,7 @@ namespace FangChain
             void HandleTransaction(TransactionModel? transaction)
             {
                 _confirmedTransactions[transaction.GetHashString()] = transaction;
+                _transactionIds.Add(transaction.Id);
                 if (transaction is SetAliasTransaction setAliasTransaction)
                 {
                     UpdateUserSummary(setAliasTransaction.PublicKeyBase58,
@@ -137,6 +201,7 @@ namespace FangChain
             {
                 if (transaction is LumpedTransaction lumpedTransaction)
                 {
+                    _confirmedTransactions[transaction.GetHashString()] = transaction;
                     var signatures = lumpedTransaction.Signatures;
                     foreach (var entry in lumpedTransaction.Transactions)
                     {

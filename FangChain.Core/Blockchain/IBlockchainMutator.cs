@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 
 namespace FangChain
 {
-    public interface IBlockchainAppender
+    public interface IBlockchainMutator
     {
         public void ProcessPendingTransactions();
+        public void CompactBlockchain(long fromIndex, long toIndex);
     }
 }

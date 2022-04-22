@@ -153,7 +153,7 @@ namespace FangChain.Test
             var secondUserKeys = await _factory.Services.GetRequiredService<ILoader>().LoadKeysAsync(secondUserCredentialsPath);
 
             // designate second User to verified
-            var designateUserTransaction = new DesignateUserTransaction(creatorKeys.PublicKeyBase58, UserDesignation.Verified);
+            var designateUserTransaction = new DesignateUserTransaction(creatorKeys.PublicKeyBase58, UserDesignation.Verified, Guid.NewGuid().ToString());
             await PrepareAndAwaitTransaction(client, designateUserTransaction, creatorKeys);
 
             // Check that transaction has been added in next block
@@ -183,7 +183,7 @@ namespace FangChain.Test
 
             // Add balance to newly created user
             BigInteger amountToAdd = 123456789;
-            var addBalanceToUserTransaction = new AddToUserBalanceTransaction(secondUserKeys.PublicKeyBase58, amountToAdd);
+            var addBalanceToUserTransaction = new AddToUserBalanceTransaction(secondUserKeys.PublicKeyBase58, amountToAdd, Guid.NewGuid().ToString());
             await PrepareAndAwaitTransaction(client, addBalanceToUserTransaction, creatorKeys);
 
             var amountQueried = await client.GetStringAsync($"/user/balance?userId={secondUserKeys.PublicKeyBase58}");
@@ -214,13 +214,33 @@ namespace FangChain.Test
                     {
                         var amountToAdd = random.Next();
                         total += amountToAdd;
-                        return new AddToUserBalanceTransaction(secondUserKeys.PublicKeyBase58, amountToAdd);
-                    });
+                        return new AddToUserBalanceTransaction(secondUserKeys.PublicKeyBase58, amountToAdd, Guid.NewGuid().ToString());
+                    })
+                    .ToList();
                 await PrepareAndAwaitTransactions(client, addTransactions, creatorKeys);
             }
 
             var response = await client.GetAsync($"/blockchain/blocks?fromIndex=0&toIndex=99");
             var responseJson = JArray.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal(1 + 5, responseJson.Count);
+
+            // Confirm balance correct
+            var amountQueried = await client.GetStringAsync($"/user/balance?userId={secondUserKeys.PublicKeyBase58}");
+            var amountQueriedParsed = JObject.Parse(amountQueried).ToObject<UserBalanceResponse>();
+            Assert.Equal(total, amountQueriedParsed.UserBalance);
+
+            // Compact blockchain
+            response = await client.PostAsync($"/blockchain/compact?fromIndex=1&toIndex=4", null);
+            Assert.True(response.IsSuccessStatusCode);
+
+            response = await client.GetAsync($"/blockchain/blocks?fromIndex=0&toIndex=99");
+            responseJson = JArray.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal(1 + 2, responseJson.Count);
+
+            // Confirm balances still correct
+            amountQueried = await client.GetStringAsync($"/user/balance?userId={secondUserKeys.PublicKeyBase58}");
+            amountQueriedParsed = JObject.Parse(amountQueried).ToObject<UserBalanceResponse>();
+            Assert.Equal(total, amountQueriedParsed.UserBalance);
         }
 
         #region Helper Methods
@@ -257,8 +277,9 @@ namespace FangChain.Test
             
             await WaitUntil(async () =>
             {
-                var transactionsToCheck = transactions.Select(t 
-                    => client.GetFromJsonAsync<bool>($"/transaction/confirmed?transactionHash={t.GetHashString()}")).ToList();
+                var transactionHashes = transactions.Select(t => t.GetHashString()).ToList();
+                var transactionsToCheck = transactionHashes.Select(hash
+                    => client.GetFromJsonAsync<bool>($"/transaction/confirmed?transactionHash={hash}")).ToList();
                 await Task.WhenAll(transactionsToCheck);
                 return transactionsToCheck.All(t => t.Result);
             });

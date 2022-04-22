@@ -13,7 +13,7 @@ namespace FangChain
         public string TokenId { get; init; }
         public string Contents { get; init; }
 
-        public AddTokenTransaction(string publicKeyBase58, string tokenId, string contents)
+        public AddTokenTransaction(string publicKeyBase58, string tokenId, string contents, string transactionId) : base(transactionId)
         {
             PublicKeyBase58 = publicKeyBase58;
             TokenId = tokenId;
@@ -22,6 +22,7 @@ namespace FangChain
 
         protected override void PopulateBytesFromProperties(MemoryStream stream)
         {
+            stream.Write(Encoding.ASCII.GetBytes(Id));
             stream.Write(BitConverter.GetBytes((int)TransactionType));
             stream.Write(Encoding.ASCII.GetBytes(PublicKeyBase58));
             stream.Write(Encoding.ASCII.GetBytes(TokenId));

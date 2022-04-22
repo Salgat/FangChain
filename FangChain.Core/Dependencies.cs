@@ -16,10 +16,11 @@ namespace FangChain
             serviceCollection.AddTransient<IValidator, Validator>();
             serviceCollection.AddTransient<IBlockchainRules, BlockchainRules>();
             serviceCollection.AddTransient<ILoader, Loader>();
+            serviceCollection.AddTransient<ICompactor, Compactor>();
 
             // In-memory state
             serviceCollection.AddSingleton<ICredentialsManager, CredentialsManager>();
-            serviceCollection.AddSingleton<IBlockchainAppender, BlockchainAppender>();
+            serviceCollection.AddSingleton<IBlockchainMutator, BlockchainMutator>();
             serviceCollection.AddSingleton<IBlockchainState, BlockchainStateInMemory>();
             serviceCollection.AddSingleton<IPendingTransactions, PendingTransactionsInMemory>();
         }

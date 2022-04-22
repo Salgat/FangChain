@@ -28,7 +28,9 @@ namespace FangChain
                 previousBlockIndex = block.BlockIndex;
             }
 
-            return true;
+            // All transaction ids must be unique
+            var transactionIds = blockchain.SelectMany(block => block.Transactions).Select(transaction => transaction.Id).ToList();
+            return transactionIds.Count == transactionIds.Distinct().Count();
         }
 
         public bool IsBlockValid(BlockModel block)

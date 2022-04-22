@@ -15,7 +15,7 @@ namespace FangChain
     {
         public const string CreatorAlias = "creator";
 
-        public long BlockIndex { get; }
+        public long BlockIndex { get; } // Starts at 0, every appended block has the next incremented index
         public string PreviousBlockHashBase58 { get; }
         public ImmutableArray<TransactionModel> Transactions { get; } = ImmutableArray<TransactionModel>.Empty;
         public ImmutableArray<SignatureModel> Signatures { get; private set; } = ImmutableArray<SignatureModel>.Empty;
@@ -56,13 +56,13 @@ namespace FangChain
             // Initial block designates creator of blockchain
             var firstUserTransactions = new List<TransactionModel>
             {
-                new DesignateUserTransaction(base58PublicKey, UserDesignation.SuperAdministrator)
+                new DesignateUserTransaction(base58PublicKey, UserDesignation.SuperAdministrator, Guid.NewGuid().ToString())
             };
             var designateTransactionSignature = firstUserTransactions.Single().CreateSignature(initialUserKeys);
             firstUserTransactions.Single().SetSignatures(new [] { designateTransactionSignature });
 
             // Set block creator's alias to "creator"
-            var creatorAliasTransaction = new SetAliasTransaction(base58PublicKey, CreatorAlias);
+            var creatorAliasTransaction = new SetAliasTransaction(base58PublicKey, CreatorAlias, Guid.NewGuid().ToString());
             var creatorAliasTransactionSignature = creatorAliasTransaction.CreateSignature(initialUserKeys);
             creatorAliasTransaction.SetSignatures(new [] { creatorAliasTransactionSignature });
             firstUserTransactions.Add(creatorAliasTransaction);
