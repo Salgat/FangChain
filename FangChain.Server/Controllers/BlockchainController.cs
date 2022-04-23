@@ -33,9 +33,7 @@ namespace FangChain
         }
 
         [HttpPost, Route("compact")]
-        public async Task Compact(long fromIndex, long toIndex)
-        {
-            _blockchainMutator.CompactBlockchain(fromIndex, toIndex);
-        }
+        public Task Compact(long fromIndex, long toIndex, CancellationToken cancellationToken)
+            => _blockchainMutator.CompactBlockchainAsync(fromIndex, toIndex, true, cancellationToken);
     }
 }

@@ -8,7 +8,7 @@ namespace FangChain
 {
     public interface IBlockchainMutator
     {
-        public void ProcessPendingTransactions();
-        public void CompactBlockchain(long fromIndex, long toIndex);
+        public Task ProcessPendingTransactionsAsync(bool persistChanges, CancellationToken cancellationToken);
+        public Task CompactBlockchainAsync(long fromIndex, long toIndex, bool persistChanges, CancellationToken cancellationToken);
     }
 }

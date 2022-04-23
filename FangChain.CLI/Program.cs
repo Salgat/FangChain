@@ -16,6 +16,7 @@ namespace FangChain.CLI
             var serviceProvider = services.BuildServiceProvider();
 
             var defaultDirectory = Directory.GetCurrentDirectory();
+            var configurationManager = serviceProvider.GetRequiredService<IConfigurationManager>();
             var loader = serviceProvider.GetRequiredService<ILoader>();
 
             var credentialsOption = new Option<string?>("--credentials-path", "The path of the credentials to create. Defaults to current working directory.");
@@ -54,6 +55,7 @@ namespace FangChain.CLI
                     throw new ArgumentException($"The '{credentialsOption.Name}' option must be populated with the base58 public key.");
                 }
 
+                configurationManager.SetBlockchainDirectory(new DirectoryInfo(blockchainPath));
                 var blockchainCreation = serviceProvider.GetRequiredService<IBlockchainCreation>();
                 var blockchainDirectory = await CLICommands.CreateBlockchainAsync(blockchainCreation, credentialsPath, blockchainPath, cancellationToken);
                 Console.WriteLine($"Blockchain created at location '{Path.GetFullPath(blockchainDirectory.FullName)}'.");
@@ -70,6 +72,7 @@ namespace FangChain.CLI
                 blockchainPath ??= defaultDirectory;
 
                 Console.WriteLine($"Validating blockchain at '{blockchainPath}'.");
+                configurationManager.SetBlockchainDirectory(new DirectoryInfo(blockchainPath));
                 var validator = serviceProvider.GetRequiredService<IValidator>();
                 var isValid = await CLICommands.ValidateBlockchainAsync(loader, validator, blockchainPath, cancellationToken);
                 if (isValid)

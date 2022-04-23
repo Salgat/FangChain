@@ -19,6 +19,7 @@ namespace FangChain
             serviceCollection.AddTransient<ICompactor, Compactor>();
 
             // In-memory state
+            serviceCollection.AddSingleton<IConfigurationManager, ConfigurationManager>();
             serviceCollection.AddSingleton<ICredentialsManager, CredentialsManager>();
             serviceCollection.AddSingleton<IBlockchainMutator, BlockchainMutator>();
             serviceCollection.AddSingleton<IBlockchainState, BlockchainStateInMemory>();

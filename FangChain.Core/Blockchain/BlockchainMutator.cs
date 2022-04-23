@@ -13,25 +13,32 @@ namespace FangChain
         private readonly IPendingTransactions _pendingTransactions;
         private readonly ICredentialsManager _credentialsManager;
         private readonly ICompactor _compactor;
-        private readonly object _lock = new ();
+        private readonly IBlockchainCreation _blockchainCreation;
+        private readonly IConfigurationManager _configurationManager;
+        private readonly SemaphoreSlim _lock = new(1, 1);
 
         public BlockchainMutator(
             IBlockchainState blockchainState,
             IBlockchainRules blockchainRules,
             IPendingTransactions pendingTransactions,
             ICredentialsManager credentialsManager,
-            ICompactor compactor)
+            ICompactor compactor,
+            IBlockchainCreation blockchainCreation,
+            IConfigurationManager configurationManager)
         {
             _blockchainState = blockchainState;
             _blockchainRules = blockchainRules;
             _pendingTransactions = pendingTransactions;
             _credentialsManager = credentialsManager;
             _compactor = compactor;
+            _blockchainCreation = blockchainCreation;
+            _configurationManager = configurationManager;
         }
 
-        public void ProcessPendingTransactions()
+        public async Task ProcessPendingTransactionsAsync(bool persistChanges, CancellationToken cancellationToken)
         {
-            lock (_lock)
+            await _lock.WaitAsync(cancellationToken);
+            try
             {
                 var currentBlockchain = _blockchainState.GetBlockchain();
                 if (!currentBlockchain.Any()) return;
@@ -64,16 +71,41 @@ namespace FangChain
                 {
                     _pendingTransactions.TryRemove(proposedTransaction);
                 }
+
+                await PersistBlockchainAsync(proposedBlockchain, cancellationToken);
+            }
+            finally
+            {
+                _lock.Release();
             }
         }
 
-        public void CompactBlockchain(long fromIndex, long toIndex)
+        public async Task CompactBlockchainAsync(long fromIndex, long toIndex, bool persistChanges, CancellationToken cancellationToken)
         {
-            lock (_lock)
+            await _lock.WaitAsync(cancellationToken);
+            try
             {
                 var blockchain = _blockchainState.GetBlockchain();
                 var compactedBlockchain = _compactor.Compact(blockchain, fromIndex, toIndex);
                 _blockchainState.SetBlockchain(compactedBlockchain);
+
+                await PersistBlockchainAsync(compactedBlockchain, cancellationToken);
+            }
+            finally
+            {
+                _lock.Release();
+            }
+        }
+
+        private async Task PersistBlockchainAsync(IEnumerable<BlockModel> blockchain, CancellationToken cancellationToken)
+        {
+            var blockchainDirectory = _configurationManager.GetBlockchainDirectory();
+            if (blockchainDirectory is not null)
+            {
+                foreach (var block in blockchain)
+                {
+                    await _blockchainCreation.PersistBlockAsync(blockchainDirectory, block, cancellationToken);
+                }
             }
         }
     }

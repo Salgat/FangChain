@@ -54,6 +54,7 @@ hostCommand.SetHandler(async (string? blockchainPath, string credentialsPath, bo
 
     // Load and validate blockchain
     blockchainPath ??= defaultDirectory;
+    serviceProvider.GetRequiredService<IConfigurationManager>().SetBlockchainDirectory(new DirectoryInfo(blockchainPath));
     var loader = serviceProvider.GetRequiredService<ILoader>();
     var hostCredentials = await loader.LoadKeysAsync(credentialsPath, cancellationToken);
     serviceProvider.GetRequiredService<ICredentialsManager>().SetHostCredentials(hostCredentials);
@@ -81,7 +82,7 @@ hostCommand.SetHandler(async (string? blockchainPath, string credentialsPath, bo
                 await Task.Delay(1000);
                 try
                 {
-                    blockchainAppender.ProcessPendingTransactions();
+                    await blockchainAppender.ProcessPendingTransactionsAsync(true, cancellationToken);
                 }
                 catch (Exception ex)
                 {

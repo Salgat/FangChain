@@ -20,17 +20,77 @@ namespace FangChain
 
         public async Task<ImmutableArray<BlockModel>> LoadBlockchainAsync(string directory, CancellationToken cancellationToken = default)
         {
-            var files = Directory.GetFiles(directory).OrderBy(fileName => fileName);
+            var files = GetBlockFilesToLoad(directory);
             var blocks = new List<BlockModel>();
+            long currentIndex = 0;
             foreach (var file in files)
             {
-                if (!file.EndsWith(".block.json")) continue;
+                var fileName = Path.GetFileName(file);
+                var (startIndex, endIndex) = GetBlockFileNameIndexRange(fileName);
+                if (startIndex != currentIndex)
+                {
+                    throw new FileNotFoundException($"Blockchain missing block with expected index of {currentIndex}.");
+                }
 
                 var block = await LoadBlockAsync(file, cancellationToken);
                 blocks.Add(block);
+
+                currentIndex = (endIndex ?? startIndex) + 1;
             }
 
             return blocks.OrderBy(block => block.BlockIndex).ToImmutableArray();
+        }
+
+        private static List<string> GetBlockFilesToLoad(string directory)
+        {
+            var files = Directory
+                .GetFiles(directory)
+                .Where(file => file.EndsWith(".block.json"))
+                .OrderBy(file =>
+                {
+                    // Order by starting index of each block
+                    var fileName = Path.GetFileName(file);
+                    return GetBlockFileNameIndexRange(fileName).StartIndex;
+                })
+                .ThenByDescending(file =>
+                {
+                    // Then order by the index with the largest range
+                    var fileName = Path.GetFileName(file);
+                    var (startIndex, endIndex) = GetBlockFileNameIndexRange(fileName);
+                    return endIndex ?? startIndex;
+                })
+                .ToList();
+
+            var filteredFiles = new List<string>();
+            var indexesAlreadyHandled = new HashSet<long>();
+            foreach (var file in files)
+            {
+                var fileName = Path.GetFileName(file);
+                var (startIndex, endIndex) = GetBlockFileNameIndexRange(fileName);
+                if (indexesAlreadyHandled.Contains(startIndex)) continue;
+
+                filteredFiles.Add(file);
+                indexesAlreadyHandled.Add(startIndex);
+            }
+
+            return filteredFiles;
+        }
+
+        private static (long StartIndex, long? EndIndex) GetBlockFileNameIndexRange(string fileName)
+        {
+            var fileNameSplit = fileName.Split('.'); 
+            if (fileNameSplit.Contains("compacted"))
+            {
+                var range = fileNameSplit[0].Split('-');
+                var start = long.Parse(range[0]);
+                var end = long.Parse(range[1]);
+                return (start, end);
+            }
+            else
+            {
+                var start = long.Parse(fileNameSplit[0]);
+                return (start, null);
+            }
         }
 
         public async Task<BlockModel> LoadBlockAsync(string blockPath, CancellationToken cancellationToken = default)

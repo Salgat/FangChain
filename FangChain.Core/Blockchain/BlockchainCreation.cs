@@ -1,12 +1,5 @@
 ﻿using Newtonsoft.Json;
-using NokitaKaze.Base58Check;
-using Secp256k1Net;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace FangChain
 {
@@ -27,24 +20,53 @@ namespace FangChain
             await PersistBlockAsync(blockchainDirectory, initialBlock, cancellationToken);
         }
 
-        public async Task PersistBlockAsync(DirectoryInfo blockchainDirectory, BlockModel block, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="blockchainDirectory"></param>
+        /// <param name="block"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns>Returns false if the block already exists.</returns>
+        /// <exception cref="Exception"></exception>
+        public async Task<bool> PersistBlockAsync(DirectoryInfo blockchainDirectory, BlockModel block, CancellationToken cancellationToken = default)
         {
             var destinationDirectory = Path.GetFullPath(blockchainDirectory.FullName);
             var destination = Path.Join(destinationDirectory, GenerateBlockName(block));
-            if (File.Exists(destination)) throw new Exception($"Attempting to write block to destination '{destination}' but a block already exists.");
+            if (File.Exists(destination)) return false;
 
             var blockJson = JsonConvert.SerializeObject(block, Formatting.Indented);
             await File.WriteAllTextAsync(destination, blockJson, cancellationToken);
+            return true;
         }
 
         public async Task<BlockModel> ReadBlockAsync(string blockPath, CancellationToken cancellationToken = default)
         {
             var blockJson = await File.ReadAllTextAsync(blockPath, cancellationToken);
-            var block = System.Text.Json.JsonSerializer.Deserialize<BlockModel>(blockJson);
+            var blockJsonParsed = JObject.Parse(blockJson);
+            BlockModel? block;
+            if (blockJsonParsed?[nameof(BlockModel.IsCompacted)]?.Value<bool>() == true)
+            {
+                block = blockJsonParsed?.ToObject<CompactedBlockModel>();
+            } 
+            else
+            {
+                block = blockJsonParsed?.ToObject<BlockModel>();
+            }
+
             if (block is null) throw new Exception($"Failed to deserialize block '{blockPath}'.");
             return block;
         }
 
-        private static string GenerateBlockName(BlockModel block) => $"{block.BlockIndex}.block.json";
+        private static string GenerateBlockName(BlockModel block)
+        {
+            if (block is CompactedBlockModel compactedBlockModel)
+            {
+                return $"{compactedBlockModel.BlockIndex}-{compactedBlockModel.NextBlockIndex}.compacted.json";
+            }
+            else
+            {
+                return $"{block.BlockIndex}.block.json";
+            }
+        }
     }
 }

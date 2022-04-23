@@ -42,7 +42,7 @@ namespace FangChain.Server
 
         [HttpPost]
         [Route("process")]
-        public void ProcessPendingTransactions()
-            => _blockchainAppender.ProcessPendingTransactions();
+        public Task ProcessPendingTransactions(CancellationToken cancellationToken)
+            => _blockchainAppender.ProcessPendingTransactionsAsync(true, cancellationToken);
     }
 }
