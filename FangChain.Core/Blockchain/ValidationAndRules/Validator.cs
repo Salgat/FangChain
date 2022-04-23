@@ -45,11 +45,11 @@ namespace FangChain
             }
 
             // Validate signature for block
-            using var secp256k1 = new Secp256k1();
             var blockHash = block.GetHash();
             foreach (var signature in block.Signatures)
             {
-                if (!secp256k1.Verify(signature.GetSignature(), blockHash, signature.GetPublicKey())) return false;
+                if (!Secp256k1Singleton.Execute(secp256k1 
+                    => secp256k1.Verify(signature.GetSignature(), blockHash, signature.GetPublicKey()))) return false;
             }
 
             return true;
@@ -59,11 +59,11 @@ namespace FangChain
         {
             if (transaction == null) throw new ArgumentException($"{nameof(TransactionModel)} cannot have a null value.");
 
-            using var secp256k1 = new Secp256k1();
             var transactionHash = transaction.GetHash();
             foreach (var signature in transaction.Signatures)
             {
-                if (!secp256k1.Verify(signature.GetSignature(), transactionHash, signature.GetPublicKey())) return false;
+                if (!Secp256k1Singleton.Execute(secp256k1 
+                    => secp256k1.Verify(signature.GetSignature(), transactionHash, signature.GetPublicKey()))) return false;
             }
 
             return true;

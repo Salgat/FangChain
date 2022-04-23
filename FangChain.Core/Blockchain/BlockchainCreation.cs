@@ -61,7 +61,7 @@ namespace FangChain
         {
             if (block is CompactedBlockModel compactedBlockModel)
             {
-                return $"{compactedBlockModel.BlockIndex}-{compactedBlockModel.NextBlockIndex}.compacted.json";
+                return $"{compactedBlockModel.BlockIndex}-{compactedBlockModel.NextBlockIndex-1}.compacted.block.json";
             }
             else
             {

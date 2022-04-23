@@ -82,11 +82,9 @@ namespace FangChain
         /// <returns></returns>
         public SignatureModel CreateSignature(PublicAndPrivateKeys keys)
         {
-            using var secp256k1 = new Secp256k1();
-
             var transactionHash = this.GetHash();
             var transactionSignature = new byte[64];
-            secp256k1.Sign(transactionSignature, transactionHash, keys.PrivateKey);
+            Secp256k1Singleton.Execute(secp256k1 => secp256k1.Sign(transactionSignature, transactionHash, keys.PrivateKey));
             return new SignatureModel(keys.GetBase58PublicKey(), Base58CheckEncoding.Encode(transactionSignature));
         }
 

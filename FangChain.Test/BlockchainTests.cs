@@ -193,7 +193,7 @@ namespace FangChain.Test
         }
 
         [Fact]
-        public async Task CompactBlocks_Success()
+        public async Task PersistCompactBlocks_Success()
         {
             await CreateAndInitializeBlockchain();
             var client = _factory.CreateClient();
@@ -224,6 +224,11 @@ namespace FangChain.Test
             var responseJson = JArray.Parse(await response.Content.ReadAsStringAsync());
             Assert.Equal(1 + 5, responseJson.Count);
 
+            // Confirm blockchain correctly persisted
+            var blocks = await _factory.Services.GetRequiredService<ILoader>().LoadBlockchainAsync(_testDirectory);
+            Assert.Equal(1 + 5, blocks.Length);
+            Assert.Equal(2 + 500, blocks.SelectMany(b => b.Transactions).Count()); // 500 add to balance transactions
+
             // Confirm balance correct
             var amountQueried = await client.GetStringAsync($"/user/balance?userId={secondUserKeys.PublicKeyBase58}");
             var amountQueriedParsed = JObject.Parse(amountQueried).ToObject<UserBalanceResponse>();
@@ -237,16 +242,15 @@ namespace FangChain.Test
             responseJson = JArray.Parse(await response.Content.ReadAsStringAsync());
             Assert.Equal(1 + 2, responseJson.Count);
 
+            // Confirm blockchain correctly persisted with compacted block
+            blocks = await _factory.Services.GetRequiredService<ILoader>().LoadBlockchainAsync(_testDirectory);
+            Assert.Equal(1 + 2, blocks.Length);
+            Assert.Equal(2 + 1 + 100, blocks.SelectMany(b => b.Transactions).Count()); // 1 compacted transaction (add to single user balance) + 100 from the final block
+
             // Confirm balances still correct
             amountQueried = await client.GetStringAsync($"/user/balance?userId={secondUserKeys.PublicKeyBase58}");
             amountQueriedParsed = JObject.Parse(amountQueried).ToObject<UserBalanceResponse>();
             Assert.Equal(total, amountQueriedParsed.UserBalance);
-        }
-
-        [Fact]
-        public async Task BlockchainPersisted()
-        {
-            // TODO: Ensure blockchain is properly persisted, including when a compaction occurs
         }
 
         #region Helper Methods

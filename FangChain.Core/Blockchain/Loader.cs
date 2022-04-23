@@ -16,8 +16,6 @@ namespace FangChain
             .Where(type => typeof(TransactionModel).IsAssignableFrom(type))
             .ToImmutableDictionary(type => type.Name, type => type);
 
-        public Loader() { }
-
         public async Task<ImmutableArray<BlockModel>> LoadBlockchainAsync(string directory, CancellationToken cancellationToken = default)
         {
             var files = GetBlockFilesToLoad(directory);
@@ -27,7 +25,11 @@ namespace FangChain
             {
                 var fileName = Path.GetFileName(file);
                 var (startIndex, endIndex) = GetBlockFileNameIndexRange(fileName);
-                if (startIndex != currentIndex)
+                if (startIndex < currentIndex)
+                {
+                    continue;
+                }
+                else if (startIndex > currentIndex)
                 {
                     throw new FileNotFoundException($"Blockchain missing block with expected index of {currentIndex}.");
                 }

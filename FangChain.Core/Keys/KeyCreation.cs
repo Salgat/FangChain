@@ -16,19 +16,17 @@ namespace FangChain
     {
         public PublicAndPrivateKeys CreatePublicAndPrivateKeys()
         {
-            using var secp256k1 = new Secp256k1();
-
             // Private Key
             var privateKey = new byte[32];
             var random = RandomNumberGenerator.Create();
             do
             {
                 random.GetBytes(privateKey);
-            } while (!secp256k1.SecretKeyVerify(privateKey));
+            } while (!Secp256k1Singleton.Execute(secp256k1 => secp256k1.SecretKeyVerify(privateKey)));
 
             // Public Key
             var publicKey = new byte[64];
-            if (!secp256k1.PublicKeyCreate(publicKey, privateKey))
+            if (!Secp256k1Singleton.Execute(secp256k1 => secp256k1.PublicKeyCreate(publicKey, privateKey)))
             {
                 throw new Exception("Failed to create a valid private key.");
             }

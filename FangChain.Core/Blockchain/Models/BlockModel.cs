@@ -50,7 +50,6 @@ namespace FangChain
         /// <returns></returns>
         public static BlockModel CreateInitialBlock(PublicAndPrivateKeys initialUserKeys)
         {
-            using var secp256k1 = new Secp256k1();
             var base58PublicKey = initialUserKeys.GetBase58PublicKey();
 
             // Initial block designates creator of blockchain
@@ -113,11 +112,9 @@ namespace FangChain
 
         public SignatureModel CreateSignature(PublicAndPrivateKeys keys)
         {
-            using var secp256k1 = new Secp256k1();
-
             var blockHash = GetHash();
             var blockSignature = new byte[64];
-            secp256k1.Sign(blockSignature, blockHash, keys.PrivateKey);
+            Secp256k1Singleton.Execute(secp256k1 => secp256k1.Sign(blockSignature, blockHash, keys.PrivateKey));
             return new SignatureModel(keys.GetBase58PublicKey(), Base58CheckEncoding.Encode(blockSignature));
         }
 
